@@ -199,74 +199,73 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
 
     def __init__(self, hass, real_time_cost_sensor, interval):
         """Initialize the sensor."""
+        super().__init__()
         self.hass = hass
         self._real_time_cost_sensor = real_time_cost_sensor
-        self._state = 0.0
         self._interval = interval
-        self._last_reset = now()
-        base_name = real_time_cost_sensor.name.replace("Real Time Energy Cost", "").strip()
+        self._state = 0.0
+        self._last_update = now()
+        base_name = real_time_cost_sensor.name.replace(" Real Time Energy Cost", "").strip()
         self._name = f"{base_name} {interval.title()} Energy Cost"
 
     async def async_added_to_hass(self):
         """Handle entity addition to Home Assistant and restore state."""
-        await super().async_added_to_hass()
         last_state = await self.async_get_last_state()
         if last_state:
             self._state = float(last_state.state)
-            self._last_reset = last_state.last_updated
-        else:
-            self._last_reset = now()
-        async_track_time_interval(self.hass, self._reset_meter, self._get_interval_delta())
+            self._last_update = last_state.last_updated
+        self.schedule_next_reset()
         async_track_state_change_event(self.hass, [self._real_time_cost_sensor.entity_id], self._handle_real_time_cost_update)
 
-    def _get_interval_delta(self):
-        """Calculate the exact duration until the next interval reset."""
+    def schedule_next_reset(self):
+        """Schedule the next reset based on the interval."""
+        next_reset_time = self.calculate_next_reset_time()
+        async_track_time_interval(self.hass, self._reset_meter, next_reset_time)
+        _LOGGER.debug(f"Scheduled next reset for {self._name} at {next_reset_time}")
+
+    def calculate_next_reset_time(self):
+        """Determine the next time to reset the meter based on the interval."""
         current_time = now()
         if self._interval == "daily":
-            # Reset at the next midnight
             next_reset = current_time.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
         elif self._interval == "monthly":
-            # Reset at the start of the next month
-            if current_time.month == 12:
-                next_reset = current_time.replace(year=current_time.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-            else:
-                next_reset = current_time.replace(month=current_time.month + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            next_month = (current_time.replace(day=1) + timedelta(days=32)).replace(day=1)
+            next_reset = next_month.replace(hour=0, minute=0, second=0, microsecond=0)
         elif self._interval == "yearly":
-            # Reset at the start of the next year
             next_reset = current_time.replace(year=current_time.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
         return next_reset - current_time
 
-    async def _reset_meter(self, event):
-        """Reset the meter at the specified interval and schedule the next reset."""
+    async def _reset_meter(self, _):
+        """Reset the meter at the specified interval."""
         self._state = 0
-        self._last_reset = now()
+        self._last_update = now()
         self.async_write_ha_state()
-        # Calculate and set the time for the next reset
-        async_track_time_interval(self.hass, self._reset_meter, self._get_interval_delta())
+        self.schedule_next_reset()
 
     @callback
     def _handle_real_time_cost_update(self, event):
-        """Handle the real-time cost updates."""
+        """Handle updates from the real-time cost sensor."""
         new_state = event.data.get('new_state')
-        if new_state is None:
-            return
-        try:
-            current_cost = float(new_state.state)
-            time_difference = (now() - self._last_update).total_seconds() / 3600
-            self._state += current_cost * time_difference
-            self._state = round(self._state, 2)  # Round to 2 decimal places
-            self.async_write_ha_state()
-        except ValueError as e:
-            _LOGGER.error(f"Error processing update: {e}")
+        if new_state and new_state.state not in ['unknown', 'unavailable']:
+            try:
+                current_cost = float(new_state.state)
+                now_time = now()
+                time_difference = (now_time - self._last_update).total_seconds() / 3600  # Convert seconds to hours
+                self._state += current_cost * time_difference
+                self._state = round(self._state, 2)  # Maintain precision
+                self._last_update = now_time  # Update last_update to current time after processing
+                self.async_write_ha_state()
+            except ValueError as e:
+                _LOGGER.error(f"Error processing update for {self._name}: {e}")
 
     @property
     def unique_id(self):
         """Return a unique identifier for this sensor."""
-        return f"{self._real_time_cost_sensor.unique_id}_{self._interval}_cumulative"
+        return f"{self._real_time_cost_sensor.unique_id}_{self._interval}"
 
     @property
     def device_info(self):
-        """Return device information to link this sensor with the integration."""
+        """Link this sensor to the real-time cost sensor's device."""
         return self._real_time_cost_sensor.device_info
 
     @property
@@ -288,8 +287,3 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
     def should_poll(self):
         """No need to poll. Will be updated by RealTimeCostSensor."""
         return False
-
-    @property
-    def unique_id(self):
-        """Return a unique ID based on interval."""
-        return f"{self._real_time_cost_sensor.unique_id}_{self._interval}"
