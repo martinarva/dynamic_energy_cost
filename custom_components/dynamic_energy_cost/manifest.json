@@ -1,0 +1,15 @@
+{
+  "domain": "dynamic_energy_cost",
+  "name": "Dynamic Energy Cost",
+  "after_dependencies": [],
+  "config_flow": true,
+  "version": "0.1",
+  "requirements": [],
+  "dependencies": [
+    "sensor"
+  ],
+  "documentation": "https://github.com/martinarva/dynamic_energy_cost/",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/martinarva/dynamic_energy_cost/issues/",
+  "codeowners": ["@martinarva"]
+}
