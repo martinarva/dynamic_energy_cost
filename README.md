@@ -10,7 +10,8 @@ This Home Assistant custom integration provides a real-time and cumulative energ
 
 ## Prerequisites
 
-Before installing, ensure you have a functional Home Assistant setup on a suitable device like a Raspberry Pi or within a Docker container if running on other hardware.
+Sensor that provides the current electricity price
+Sensor that monitors the power usage
 
 ## Installation
 
