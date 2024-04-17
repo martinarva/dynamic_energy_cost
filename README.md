@@ -33,8 +33,8 @@ Before installing, ensure you have a functional Home Assistant setup on a suitab
 
 2. **Configure Sensors**:
    - Input the entity IDs for your:
-     - **Electricity Price Sensor**: Sensor that provides the current electricity price.
-     - **Power Usage Sensor**: Sensor that monitors the power usage in watts.
+     - **Electricity Price Sensor**: Sensor that provides the current electricity price. Price sensor shoiuld reflect the cost in Euro per kilowatt-hour (EUR/kWh).
+     - **Power Usage Sensor**: Sensor that monitors the power usage. Ensure that the power sensor measures in Watts (W)
    - Submit to complete the integration setup.
 
 ## Support
