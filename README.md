@@ -10,8 +10,8 @@ This Home Assistant custom integration provides a real-time and cumulative energ
 
 ## Prerequisites
 
-Sensor that provides the current electricity price
-Sensor that monitors the power usage
+- Sensor that provides the current electricity price in EUR/kWh
+- Sensor that monitors the power usage in W
 
 ## Installation
 
