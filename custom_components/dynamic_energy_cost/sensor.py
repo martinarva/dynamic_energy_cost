@@ -1,7 +1,8 @@
 import logging
+from decimal import Decimal, InvalidOperation
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import callback
-from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval
+from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval, async_call_later
 from homeassistant.helpers import config_validation as cv
 from homeassistant.util.dt import now
 from homeassistant.helpers.restore_state import RestoreEntity
@@ -40,6 +41,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     # Set up listeners for the entities
     async_track_state_change_event(hass, [electricity_price_sensor, power_sensor], real_time_cost_sensor.handle_state_change)
+    _LOGGER.info("Dynamic Energy Cost sensors setup complete.")
 
 class RealTimeCostSensor(SensorEntity):
     """Sensor that calculates energy cost in real-time based on power usage and electricity price."""
@@ -49,7 +51,7 @@ class RealTimeCostSensor(SensorEntity):
         self._config_entry = config_entry
         self._electricity_price_sensor_id = electricity_price_sensor_id
         self._power_sensor_id = power_sensor_id
-        self._state = 0
+        self._state = Decimal(0)
 
         # Extract a friendly name from the power sensor's entity ID
         base_part = power_sensor_id.split('.')[-1]  # Assuming entity_id format like 'sensor.heat_pump_power'
@@ -82,10 +84,12 @@ class RealTimeCostSensor(SensorEntity):
 
     @property
     def state(self):
-        return self._state
+        """Return the current state of the sensor."""
+        return float(self._state)
 
     @property
     def unit_of_measurement(self):
+        """Return the unit of measurement."""
         return 'EUR/h'
 
     @callback
@@ -120,44 +124,46 @@ class CumulativeCostSensor(SensorEntity, RestoreEntity):
 
     def __init__(self, hass, real_time_cost_sensor):
         """Initialize the sensor."""
+        super().__init__()
         self.hass = hass
         self._real_time_cost_sensor = real_time_cost_sensor
-        self._state = 0.0
+        self._state = Decimal('0.00')
         self._last_update = now()
 
         base_name = real_time_cost_sensor.name.replace("Real Time Energy Cost", "").strip()
         self._name = f"{base_name} Cumulative Energy Cost"
 
     async def async_added_to_hass(self):
-        """Handle when an entity is added to Home Assistant."""
+        """Restore state and set up updates when added to Home Assistant."""
         await super().async_added_to_hass()
         # Restore state if available
         last_state = await self.async_get_last_state()
-        if last_state:
-            self._state = float(last_state.state)
-            self._last_update = last_state.last_updated
-        else:
-            self._last_update = now()
+        if last_state and last_state.state not in ('unknown', 'unavailable'):
+            try:
+                self._state = Decimal(last_state.state)
+            except InvalidOperation:
+                _LOGGER.error("Invalid state value for restoration: %s", last_state.state)
 
-        async_track_state_change_event(
-            self.hass, [self._real_time_cost_sensor.entity_id], self._handle_real_time_cost_update
-        )
+        self.async_on_remove(async_track_state_change_event(self.hass, [self._real_time_cost_sensor.entity_id], self._handle_real_time_cost_update))
 
     @callback
     def _handle_real_time_cost_update(self, event):
-        """Handle the real-time cost updates."""
+        """Update cumulative cost based on the real-time cost sensor updates."""
         new_state = event.data.get('new_state')
-        if new_state is None:
+        if new_state is None or new_state.state in ('unknown', 'unavailable'):
+            _LOGGER.debug("Skipping update due to unavailable state")
             return
+
         try:
-            current_cost = float(new_state.state)
-            time_difference = (now() - self._last_update).total_seconds() / 3600
-            self._state += current_cost * time_difference
-            self._state = round(self._state, 2)  # Round to 2 decimal places
+            current_cost = Decimal(new_state.state)
+            time_difference = now() - self._last_update
+            hours_passed = Decimal(time_difference.total_seconds()) / Decimal(3600)  # Convert time difference to hours as Decimal
+            self._state += (current_cost * hours_passed).quantize(Decimal('0.01'))
             self._last_update = now()
             self.async_write_ha_state()
-        except ValueError as e:
-            _LOGGER.error(f"Error processing update: {e}")
+            _LOGGER.debug(f"Updated state to: {self._state} using cost: {current_cost} over {hours_passed} hours")
+        except (InvalidOperation, TypeError) as e:
+            _LOGGER.error(f"Error updating cumulative cost: {e}")
 
     @property
     def unique_id(self):
@@ -177,7 +183,7 @@ class CumulativeCostSensor(SensorEntity, RestoreEntity):
     @property
     def state(self):
         """Return the current cumulative cost."""
-        return self._state
+        return float(self._state) if self._state.is_finite() else None
 
     @property
     def unit_of_measurement(self):
@@ -189,11 +195,6 @@ class CumulativeCostSensor(SensorEntity, RestoreEntity):
         """No need to poll. Will be updated by RealTimeCostSensor."""
         return False
 
-    @property
-    def unique_id(self):
-        """Return a unique ID."""
-        return f"{self._real_time_cost_sensor.unique_id}_cumulative"
-    
 class UtilityMeterSensor(SensorEntity, RestoreEntity):
     """Sensor that calculates cumulative energy costs over set intervals and resets accordingly."""
 
@@ -203,19 +204,27 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
         self.hass = hass
         self._real_time_cost_sensor = real_time_cost_sensor
         self._interval = interval
-        self._state = 0.0
+        self._state = Decimal('0.00')
         self._last_update = now()
         base_name = real_time_cost_sensor.name.replace(" Real Time Energy Cost", "").strip()
         self._name = f"{base_name} {interval.title()} Energy Cost"
 
     async def async_added_to_hass(self):
-        """Handle entity addition to Home Assistant and restore state."""
+        """Restore state and set up updates when added to Home Assistant."""
+        await super().async_added_to_hass()
+        # Restore state if available
         last_state = await self.async_get_last_state()
-        if last_state:
-            self._state = float(last_state.state)
-            self._last_update = last_state.last_updated
+        if last_state and last_state.state not in ('unknown', 'unavailable'):
+            try:
+                self._state = Decimal(last_state.state)
+            except InvalidOperation:
+                _LOGGER.error("Invalid state value for restoration: %s", last_state.state)
         self.schedule_next_reset()
-        async_track_state_change_event(self.hass, [self._real_time_cost_sensor.entity_id], self._handle_real_time_cost_update)
+        _LOGGER.debug("Registering state change event for: %s", self._real_time_cost_sensor.entity_id)
+        try:
+            async_track_state_change_event(self.hass, [self._real_time_cost_sensor.entity_id], self._handle_real_time_cost_update)
+        except Exception as e:
+            _LOGGER.error("Failed to track state change: %s", str(e))
 
     def schedule_next_reset(self):
         """Schedule the next reset based on the interval."""
@@ -237,26 +246,30 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
 
     async def _reset_meter(self, _):
         """Reset the meter at the specified interval."""
-        self._state = 0
+        self._state = Decimal('0.00')
         self._last_update = now()
         self.async_write_ha_state()
         self.schedule_next_reset()
+        _LOGGER.debug(f"Meter reset for {self._name}. Next reset scheduled.")
 
     @callback
     def _handle_real_time_cost_update(self, event):
-        """Handle updates from the real-time cost sensor."""
+        """Update cumulative cost based on the real-time cost sensor updates."""
         new_state = event.data.get('new_state')
-        if new_state and new_state.state not in ['unknown', 'unavailable']:
-            try:
-                current_cost = float(new_state.state)
-                now_time = now()
-                time_difference = (now_time - self._last_update).total_seconds() / 3600  # Convert seconds to hours
-                self._state += current_cost * time_difference
-                self._state = round(self._state, 2)  # Maintain precision
-                self._last_update = now_time  # Update last_update to current time after processing
-                self.async_write_ha_state()
-            except ValueError as e:
-                _LOGGER.error(f"Error processing update for {self._name}: {e}")
+        if new_state is None or new_state.state in ('unknown', 'unavailable'):
+            _LOGGER.debug("Skipping update due to unavailable state")
+            return
+
+        try:
+            current_cost = Decimal(new_state.state)
+            time_difference = now() - self._last_update
+            hours_passed = Decimal(time_difference.total_seconds()) / Decimal(3600)  # Convert time difference to hours as Decimal
+            self._state += (current_cost * hours_passed).quantize(Decimal('0.01'))
+            self._last_update = now()
+            self.async_write_ha_state()
+            _LOGGER.debug(f"Updated state to: {self._state} using cost: {current_cost} over {hours_passed} hours")
+        except (InvalidOperation, TypeError) as e:
+            _LOGGER.error(f"Error updating cumulative cost: {e}")
 
     @property
     def unique_id(self):
