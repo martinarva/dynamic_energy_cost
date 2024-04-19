@@ -3,15 +3,18 @@
     "step": {
       "user": {
         "title": "Configure your Dynamic Energy Cost Integration",
-        "description": "Please select the appropriate entities for your sensors. Ensure that the power sensor measures in Watts (W) and the price sensor reflects the cost in Euro per kilowatt-hour (EUR/kWh)",
+        "description": "Select either a power sensor (W) or an energy sensor (kWh), along with the price sensor (EUR/kWh).",
         "data": {
           "electricity_price_sensor": "Electricity Price Sensor Entity ID (eur/kWh)",
-          "power_sensor": "Power Usage Sensor Entity ID (W)"
+          "power_sensor": "Power Usage Sensor Entity ID (W) - Optional if energy sensor is provided",
+          "energy_sensor": "Energy Usage Sensor Entity ID (kWh) - Optional if power sensor is provided"
         }
       }
     },
     "error": {
-      "invalid_entity": "Invalid entity ID provided."
+      "invalid_entity": "Invalid entity ID provided.",
+      "invalid_config": "Please choose either a power sensor or an energy sensor.",
+      "missing_sensor": "Enter at least a power sensor or an energy sensor."
     },
     "success": {
       "title": "Success",
