@@ -1,24 +1,32 @@
-# Dynamic Energy Cost Integration for Home Assistant
 
-This Home Assistant custom integration provides a real-time and cumulative energy cost tracking solution, ideal for monitoring electricity expenses as they relate to fluctuating prices and power consumption. It's specifically designed to work with frequently updating electricity prices, such as those provided by Nordpool.
+## Dynamic Energy Cost Integration for Home Assistant
 
-## Features
+This Home Assistant custom integration provides a sophisticated real-time and cumulative energy cost tracking solution, ideal for monitoring electricity expenses related to fluctuating prices and varying energy consumption levels. It's specifically crafted to handle dynamic electricity prices such as those from Nordpool.
 
-- **Real-Time Cost Sensor**: Calculates energy costs in real-time, based on current power usage and electricity prices. This feature is particularly useful with electricity price sensors that update frequently.
-- **Cumulative Cost Sensor**: Accumulates the total cost over time, maintaining a running total even through Home Assistant restarts.
-- **Utility Meters**: Automatically generates daily, monthly, and yearly accumulations of costs, allowing for detailed and segmented analysis of energy expenses.
+### Features
 
-## Prerequisites
+- **Real-Time Cost Sensor (Power Based)**: Calculates energy costs in real-time based on current power usage in watts (W) and electricity prices. This sensor updates dynamically, making it especially useful with frequently changing electricity price sensors.
+- **Utility Meters (Energy Based)**: Automatically generates daily, monthly, and yearly accumulations of costs, facilitating detailed and segmented analysis of energy expenses. These are based on actual energy usage in kilowatt-hours (kWh), providing precision aligned with the Home Assistant Energy Dashboard.
+- **Enhanced Sensor Attributes**: Sensors now include attributes for total energy used (kWh) and the average energy price, aiding in energy usage optimization during cheaper hours.
 
-- Sensor that provides the current electricity price in EUR/kWh
-- Sensor that monitors the power usage in W
+### Best Practices
 
-## Installation
+Calculating energy cost from an energy (kWh) sensor is the more precise and recommended method. If an energy sensor is available, it is advisable to use this option for accuracy comparable to the Home Assistant Energy Dashboard. If no kWh sensor is available, the integration can alternatively use a power (W) sensor.
 
-### Manual Installation
+**Note**: It is important that only one type of sensor (either power or energy) is configured for this integration. Both cannot be used simultaneously.
+
+### Prerequisites
+
+- **Electricity Price Sensor**: A sensor that provides the current electricity price in EUR/kWh.
+- **Power Usage Sensor (optional)**: A sensor that monitors power usage in Watts (W).
+- **Energy Usage Sensor (optional)**: A sensor that monitors energy consumption in kilowatt-hours (kWh).
+
+### Installation
+
+#### Manual Installation
 
 1. **Download and Prepare**:
-   - Access the GitHub repository for this integration.
+   - Access the [GitHub repository](#) for this integration.
    - Download the ZIP file of the repository and extract its contents.
    - Copy the `dynamic_energy_cost` folder into the `custom_components` directory located typically at `/config/custom_components/` in your Home Assistant directory.
 
@@ -28,16 +36,16 @@ This Home Assistant custom integration provides a real-time and cumulative energ
 ### Configuration via UI
 
 1. **Add Integration**:
-   - Navigate to **Settings** > **Devices & Services**.
-   - Click **Add Integration** and search for "Dynamic Energy Cost".
+   - Navigate to Settings > Devices & Services.
+   - Click Add Integration and search for "Dynamic Energy Cost".
    - Select the Dynamic Energy Cost integration to initiate setup.
 
 2. **Configure Sensors**:
    - Input the entity IDs for your:
-     - **Electricity Price Sensor**: Sensor that provides the current electricity price. Price sensor shoiuld reflect the cost in Euro per kilowatt-hour (EUR/kWh).
-     - **Power Usage Sensor**: Sensor that monitors the power usage. Ensure that the power sensor measures in Watts (W)
+     - **Electricity Price Sensor**: Sensor that provides the current electricity price.
+     - **Power/Energy Usage Sensor**: Ensure the sensor measures in Watts (W) for power or kilowatt-hours (kWh) for energy.
    - Submit to complete the integration setup.
 
-## Support
+### Support
 
-For support, additional instructions, or to report issues, please visit the GitHub issues page associated with this repository.
+For support, additional instructions, or to report issues, please visit the [GitHub issues page](#) associated with this repository.
