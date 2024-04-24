@@ -19,7 +19,7 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         self._energy_sensor_id = energy_sensor_id
         self._price_sensor_id = price_sensor_id
         self._state = None
-        self._unit_of_measurement = 'EUR'
+        self._unit_of_measurement = 'EUR'  # Default to EUR, will update after entity addition
         self._interval = interval
         self._last_energy_reading = None
         self._cumulative_energy_kwh = 0
@@ -83,6 +83,7 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
     async def async_added_to_hass(self):
         """Load the last known state and subscribe to updates."""
         await super().async_added_to_hass()  # Ensures base class restoration logic is executed
+        self._unit_of_measurement = self.get_currency()  # Update the currency once entity is loaded
         last_state = await self.async_get_last_state()
         if last_state and last_state.state not in ['unknown', 'unavailable', None]:
             self._state = float(last_state.state) if last_state.state else 0
@@ -97,6 +98,18 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         self.async_write_ha_state()  # Ensure state is written after restoration
         async_track_state_change(self.hass, self._energy_sensor_id, self._async_update_energy_price)
         self.schedule_next_reset()
+
+    def get_currency(self):
+        """Extract the currency from the unit of measurement of the price sensor."""
+        price_entity = self.hass.states.get(self._price_sensor_id)
+        if price_entity and price_entity.attributes.get('unit_of_measurement'):
+            currency = price_entity.attributes['unit_of_measurement'].split('/')[0].strip()
+            _LOGGER.debug(f"Extracted currency '{currency}' from unit of measurement '{price_entity.attributes['unit_of_measurement']}'.")
+            return currency
+        else:
+            _LOGGER.warning(f"Unit of measurement not available or invalid for sensor {self._price_sensor_id}, defaulting to 'EUR'.")
+        return 'EUR'  # Default to EUR if not found
+
 
     def calculate_next_reset_time(self):
         current_time = now()
