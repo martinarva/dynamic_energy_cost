@@ -114,11 +114,12 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         async_track_point_in_time(self.hass, self._reset_meter, next_reset)
 
     async def _reset_meter(self, _):
-        self._state = 0
-        self.async_write_ha_state()
-        self.schedule_next_reset()
-        _LOGGER.debug(f"Meter reset for {self.name}. Next reset scheduled.")
-
+        self._state = 0  # Reset the cost to zero
+        self._cumulative_energy_kwh = 0 # Reset the cumulative energy kWh count to zero
+        self.async_write_ha_state() # Update the state in Home Assistant
+        self.schedule_next_reset() # Reschedule the next reset
+        _LOGGER.debug(f"Meter reset for {self.name} and cumulative energy reset to {self._cumulative_energy_kwh}. Next reset scheduled.")
+        
     async def _async_update_energy_price(self, entity_id, old_state, new_state):
         if new_state is None or new_state.state in ['unknown', 'unavailable']:
             return
