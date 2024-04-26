@@ -3,7 +3,7 @@ from decimal import Decimal
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.core import callback
-from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval
+from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval, async_track_point_in_time
 from homeassistant.util.dt import now
 from datetime import timedelta
 from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, ENERGY_SENSOR, POWER_SENSOR
@@ -139,23 +139,35 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
         except Exception as e:
             _LOGGER.error("Failed to track state change: %s", str(e))
 
-    def schedule_next_reset(self):
-        """Schedule the next reset based on the interval."""
-        next_reset_time = self.calculate_next_reset_time()
-        async_track_time_interval(self.hass, self._reset_meter, next_reset_time)
-        _LOGGER.debug(f"Scheduled next reset for {self._name} at {next_reset_time}")
-
     def calculate_next_reset_time(self):
-        """Determine the next time to reset the meter based on the interval."""
+        """Determine the exact datetime for the next reset based on the interval."""
         current_time = now()
         if self._interval == "daily":
-            next_reset = current_time.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+            next_reset = (current_time + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
         elif self._interval == "monthly":
             next_month = (current_time.replace(day=1) + timedelta(days=32)).replace(day=1)
             next_reset = next_month.replace(hour=0, minute=0, second=0, microsecond=0)
         elif self._interval == "yearly":
             next_reset = current_time.replace(year=current_time.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-        return next_reset - current_time
+        
+        _LOGGER.debug(f"Calculated next reset time for {self._interval} reset: {next_reset}")
+        return next_reset
+
+    @callback
+    def schedule_next_reset(self):
+        """Schedule the next reset based on the interval, cancelling any previous schedules."""
+        next_reset_time = self.calculate_next_reset_time()
+
+        # Cancel existing scheduled reset if it exists
+        if hasattr(self, '_reset_timer'):
+            self.hass.async_create_task(self.hass.async_remove_job(self._reset_timer))
+
+        # Log the scheduling of the next reset
+        _LOGGER.debug(f"Scheduling next reset for {self._name} at {next_reset_time}")
+
+        # Schedule the next reset
+        self._reset_timer = async_track_point_in_time(self.hass, self._reset_meter, next_reset_time)
+        _LOGGER.debug("Next reset scheduled successfully.")
 
     async def _reset_meter(self, _):
         """Reset the meter at the specified interval."""
