@@ -187,6 +187,9 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
 
         try:
             current_cost = Decimal(new_state.state)
+            if current_cost <= 0:  # Skip updates if the new cost is not positive
+                _LOGGER.debug(f"Skipping update as the calculated cost {current_cost} is not positive.")
+                return            
             time_difference = now() - self._last_update
             hours_passed = Decimal(time_difference.total_seconds()) / Decimal(3600)  # Convert time difference to hours as Decimal
             self._state += (current_cost * hours_passed).quantize(Decimal('0.01'))
