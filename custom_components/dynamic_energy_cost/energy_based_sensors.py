@@ -1,11 +1,10 @@
 import logging
 from datetime import timedelta
 from homeassistant.util.dt import now
-from homeassistant.helpers.event import async_track_state_change, async_track_point_in_time
+from homeassistant.helpers.event import async_track_state_change_event, async_track_point_in_time
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.core import callback
-from homeassistant.helpers.event import async_track_state_change
 from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, ENERGY_SENSOR
 
 _LOGGER = logging.getLogger(__name__)
@@ -82,21 +81,15 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
     
     async def async_added_to_hass(self):
         """Load the last known state and subscribe to updates."""
-        await super().async_added_to_hass()  # Ensures base class restoration logic is executed
-        self._unit_of_measurement = self.get_currency()  # Update the currency once entity is loaded
+        await super().async_added_to_hass()
+        self._unit_of_measurement = self.get_currency()
         last_state = await self.async_get_last_state()
         if last_state and last_state.state not in ['unknown', 'unavailable', None]:
-            self._state = float(last_state.state) if last_state.state else 0
-            # Retrieve last energy reading if available and not set to a default
-            self._last_energy_reading = float(last_state.attributes.get('last_energy')) if 'last_energy' in last_state.attributes else None
-            # Restore the cumulative energy value from the last known attributes
-            self._cumulative_energy_kwh = float(last_state.attributes.get('cumulative_energy_kwh', 0))
-            _LOGGER.debug(f"Restored state {self._state} and cumulative energy {self._cumulative_energy_kwh} from last known state.")
-        else:
-            _LOGGER.debug("No reliable previous state available, deferring initialization.")
-
-        self.async_write_ha_state()  # Ensure state is written after restoration
-        async_track_state_change(self.hass, self._energy_sensor_id, self._async_update_energy_price)
+            self._state = float(last_state.state)
+            self._last_energy_reading = float(last_state.attributes.get('last_energy'))
+            self._cumulative_energy_kwh = float(last_state.attributes.get('cumulative_energy_kwh'))
+        self.async_write_ha_state()
+        async_track_state_change_event(self.hass, self._energy_sensor_id, self._async_update_energy_price_event)
         self.schedule_next_reset()
 
     def get_currency(self):
@@ -132,19 +125,14 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         self.async_write_ha_state() # Update the state in Home Assistant
         self.schedule_next_reset() # Reschedule the next reset
         _LOGGER.debug(f"Meter reset for {self.name} and cumulative energy reset to {self._cumulative_energy_kwh}. Next reset scheduled.")
-        
-    async def _async_update_energy_price(self, entity_id, old_state, new_state):
-        if new_state is None or new_state.state in ['unknown', 'unavailable']:
-            return
-        self.hass.async_create_task(self.async_update())
 
-    def _async_update_energy_price(self, entity_id, old_state, new_state):
-        """Handle sensor state changes."""
-        _LOGGER.debug(f"State change detected for {entity_id}: from {old_state} to {new_state}")
+    async def _async_update_energy_price_event(self, event):
+        """Handle sensor state changes based on event data."""
+        new_state = event.data.get('new_state')
         if new_state is None or new_state.state in ['unknown', 'unavailable']:
-            _LOGGER.warning(f"Sensor {entity_id} is unavailable.")
+            _LOGGER.debug("New state is unknown or unavailable, skipping update.")
             return
-        self.hass.async_create_task(self.async_update())
+        await self.async_update()
 
     async def async_update(self):
         """Update the energy costs using the latest sensor states, only adding incremental costs."""
