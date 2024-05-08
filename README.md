@@ -60,3 +60,5 @@ To update the integration to a newer version:
 ## Support
 
 For support, additional instructions, or to report issues, please visit the GitHub issues page associated with this repository.
+Home Assitant Community  topic: https://community.home-assistant.io/t/dynamic-energy-cost/726931
+
