@@ -3,9 +3,10 @@ from datetime import timedelta
 from homeassistant.util.dt import now
 from homeassistant.helpers.event import async_track_state_change_event, async_track_point_in_time
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.core import callback
-from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, ENERGY_SENSOR
+from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, ENERGY_SENSOR, SERVICE_RESET_COST
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,6 +48,15 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
 
         _LOGGER.debug(f"Sensor base name set to: {self._base_name}")
         _LOGGER.debug(f"Sensor device name set to: {self._device_name}")
+
+    @callback
+    def async_reset(self):
+        """Reset the energy cost and cumulative energy kWh."""
+        _LOGGER.debug(f"Resetting cost for {self.entity_id}")
+        self._state = 0
+        self._cumulative_energy_kwh = 0
+        self.async_write_ha_state()
+
     @property
     def unique_id(self):
         return f"{self._energy_sensor_id}_{self._interval}_cost"
