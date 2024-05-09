@@ -1,12 +1,12 @@
 import logging
 from decimal import Decimal
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.core import callback
 from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval, async_track_point_in_time
 from homeassistant.util.dt import now
 from datetime import timedelta
-from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, ENERGY_SENSOR, POWER_SENSOR
+from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, ENERGY_SENSOR, SERVICE_RESET_COST
 _LOGGER = logging.getLogger(__name__)
 
 class RealTimeCostSensor(SensorEntity):
@@ -60,6 +60,7 @@ class RealTimeCostSensor(SensorEntity):
     def unit_of_measurement(self):
         """Return the unit of measurement."""
         return 'EUR/h'
+
 
     @callback
     def handle_state_change(self, event):
@@ -154,6 +155,13 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
         return next_reset
 
     @callback
+    def async_reset(self):
+        """Reset the energy cost and cumulative energy kWh."""
+        _LOGGER.debug(f"Resetting cost for {self.entity_id}")
+        self._state = 0
+        self.async_write_ha_state()
+
+    @callback
     def schedule_next_reset(self):
         """Schedule the next reset based on the interval, cancelling any previous schedules."""
         next_reset_time = self.calculate_next_reset_time()
@@ -223,6 +231,21 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
     def unit_of_measurement(self):
         """Return the unit of measurement."""
         return 'EUR'
+
+    @property
+    def device_class(self):
+        """Return the class of this device, from SensorDeviceClass."""
+        return SensorDeviceClass.MONETARY
+
+    @property
+    def state_class(self):
+        """Return the state class of this device, from SensorStateClass."""
+        return SensorStateClass.TOTAL
+
+    @property
+    def icon(self):
+        """Return the icon to use in the frontend."""
+        return "mdi:cash"
 
     @property
     def should_poll(self):
