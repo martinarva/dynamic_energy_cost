@@ -22,7 +22,7 @@ Dynamic Energy Cost provides a service dynamic_energy_cost.reset_cost which you 
 service: dynamic_energy_cost.reset_cost
 target:
   entity_id: sensor.your_sensor_entity_id
-
+```
 
 
 ## Prerequisites
