@@ -4,15 +4,26 @@ This Home Assistant custom integration provides a sophisticated real-time and cu
 
 ## Features
 
-- **Real-Time Cost Sensor (Power Based):** Calculates energy costs in real-time based on current power usage in watts (W) and electricity prices. This sensor updates dynamically, making it especially useful with frequently changing electricity price sensors.
-- **Utility Meters (Energy Based):** Automatically generates daily, monthly, and yearly accumulations of costs, facilitating detailed and segmented analysis of energy expenses. These are based on actual energy usage in kilowatt-hours (kWh), providing precision aligned with the Home Assistant Energy Dashboard.
-- **Enhanced Sensor Attributes:** Sensors now include attributes for total energy used (kWh) and the average energy price, aiding in energy usage optimization during cheaper hours.
+- **Real-Time Cost Sensor (only Power Based):** Calculates energy costs in real-time based on current power usage in watts (W) and electricity prices.
+- **Daily, Monhtly and Yearly Cost (Energy and Power Based):** Automatically generates daily, monthly, and yearly accumulations of costs, facilitating detailed and segmented analysis of energy expenses. These are based on actual energy usage in kilowatt-hours (kWh), providing precision aligned with the Home Assistant Energy Dashboard.
+- **Enhanced Sensor Attributes:** Energy Based Sensors include attributes for total energy used (kWh) and the average energy price, aiding in energy usage optimization during cheaper hours.
 
 ## Best Practices
 
 Calculating energy cost from an energy (kWh) sensor is the more precise and recommended method. If an energy sensor is available, it is advisable to use this option for accuracy comparable to the Home Assistant Energy Dashboard. If no kWh sensor is available, the integration can alternatively use a power (W) sensor.
 
 **Note:** It is important that only one type of sensor (either power or energy) is configured for this integration. Both cannot be used simultaneously.
+
+## Resetting the cost sensors
+
+Dynamic Energy Cost provides a service dynamic_energy_cost.reset_cost which you can call to reset energy sensors to 0. You can call this service from the GUI (Developer tools -> Services) or use this in automations.
+
+```yaml
+service: dynamic_energy_cost.reset_cost
+target:
+  entity_id: sensor.your_sensor_entity_id
+
+
 
 ## Prerequisites
 
