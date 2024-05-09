@@ -33,6 +33,16 @@ target:
 
 ## Installation
 
+### Semi-Manual Installation with HACS
+1. Go HACS integrations secction.
+2. Click on the 3 dots in the top right corner.
+3. Select "Custom repositories"
+4. Add the URL (https://github.com/martinarva/dynamic_energy_cost) to the repository.
+5. Select the integration category.
+6. Click the "ADD" button.
+7. Now you are able to download the integration
+
+
 ### Manual Installation
 
 #### Download and Prepare:
