@@ -2,7 +2,7 @@ import logging
 from datetime import timedelta
 from homeassistant.util.dt import now
 from homeassistant.helpers.event import async_track_state_change_event, async_track_point_in_time
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.core import callback
 from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, ENERGY_SENSOR
@@ -70,6 +70,21 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
     @property
     def unit_of_measurement(self):
         return self._unit_of_measurement
+
+    @property
+    def device_class(self):
+        """Return the class of this device, from SensorDeviceClass."""
+        return SensorDeviceClass.MONETARY
+
+    @property
+    def state_class(self):
+        """Return the state class of this device, from SensorStateClass."""
+        return SensorStateClass.TOTAL
+
+    @property
+    def icon(self):
+        """Return the icon to use in the frontend."""
+        return "mdi:cash"
 
     @property
     def extra_state_attributes(self):
