@@ -1,9 +1,20 @@
 import logging
 from .energy_based_sensors import BaseEnergyCostSensor, DailyEnergyCostSensor, MonthlyEnergyCostSensor, YearlyEnergyCostSensor
 from .power_based_sensors import RealTimeCostSensor, UtilityMeterSensor
-from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, ENERGY_SENSOR, POWER_SENSOR
+from homeassistant.helpers import entity_platform
+from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, ENERGY_SENSOR, POWER_SENSOR, SERVICE_RESET_COST
 
 _LOGGER = logging.getLogger(__name__)
+
+async def register_entity_services(hass):
+    """Register custom services for energy cost sensors."""
+    platform = entity_platform.async_get_current_platform()
+
+    platform.async_register_entity_service(
+        SERVICE_RESET_COST,
+        {},  # No parameters for the service
+        "async_reset"
+    )
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Setup sensor platform based on user configuration."""
@@ -33,3 +44,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         async_add_entities(sensors, True)
     else:
         _LOGGER.error("No sensors configured. Check your configuration.")
+    
+    await register_entity_services(hass)
+
