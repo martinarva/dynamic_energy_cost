@@ -3,6 +3,7 @@ import voluptuous as vol
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers import selector
 from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, POWER_SENSOR, ENERGY_SENSOR
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,9 +49,15 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_entity"
 
         schema = vol.Schema({
-            vol.Required("electricity_price_sensor"): str,
-            vol.Optional("power_sensor"): str,
-            vol.Optional("energy_sensor"): str
+            vol.Required("electricity_price_sensor"): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", multiple=False)
+            ),
+            vol.Optional("power_sensor"): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", multiple=False, device_class="power")
+            ),
+            vol.Optional("energy_sensor"): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", multiple=False, device_class="energy")
+            )
         })
 
         return self.async_show_form(
