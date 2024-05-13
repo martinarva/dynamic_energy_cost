@@ -6,7 +6,7 @@ from homeassistant.core import callback
 from homeassistant.helpers.event import async_track_state_change_event, async_track_time_interval, async_track_point_in_time
 from homeassistant.util.dt import now
 from datetime import timedelta
-from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, ENERGY_SENSOR, SERVICE_RESET_COST
+from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, ENERGY_SENSOR, POWER_SENSOR, SERVICE_RESET_COST
 _LOGGER = logging.getLogger(__name__)
 
 class RealTimeCostSensor(SensorEntity):
