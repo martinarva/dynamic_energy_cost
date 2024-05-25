@@ -59,7 +59,7 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
 
     @property
     def unique_id(self):
-        return f"{self._energy_sensor_id}_{self._interval}_cost"
+        return f"{self._price_sensor_id}_{self._energy_sensor_id}_{self._interval}_cost"
 
     @property
     def name(self):
