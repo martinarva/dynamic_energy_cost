@@ -101,6 +101,7 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         """Return the state attributes of the device."""
         attrs = super().extra_state_attributes or {}  # Ensure it's a dict
         attrs['cumulative_energy_kwh'] = self._cumulative_energy_kwh
+        attrs['last_energy_reading'] = self._last_energy_reading
         attrs['average_energy_cost'] = self._state / self._cumulative_energy_kwh if self._cumulative_energy_kwh else 0
         return attrs
     
@@ -111,7 +112,7 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         last_state = await self.async_get_last_state()
         if last_state and last_state.state not in ['unknown', 'unavailable', None]:
             self._state = float(last_state.state)
-            self._last_energy_reading = float(last_state.attributes.get('last_energy'))
+            self._last_energy_reading = float(last_state.attributes.get('last_energy_reading'))
             self._cumulative_energy_kwh = float(last_state.attributes.get('cumulative_energy_kwh'))
         self.async_write_ha_state()
         async_track_state_change_event(self.hass, self._energy_sensor_id, self._async_update_energy_price_event)
