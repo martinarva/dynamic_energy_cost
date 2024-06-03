@@ -18,11 +18,13 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         self.hass = hass
         self._energy_sensor_id = energy_sensor_id
         self._price_sensor_id = price_sensor_id
-        self._state = None
+        self._state = 0
         self._unit_of_measurement = 'EUR'  # Default to EUR, will update after entity addition
         self._interval = interval
         self._last_energy_reading = None
         self._cumulative_energy_kwh = 0
+        self._calibrated_energy_reading = None
+        self._calibrated_state = 0
         self._last_reset_time = now()
         self.schedule_next_reset()
         _LOGGER.debug("Sensor initialized with energy sensor ID %s and price sensor ID %s.", energy_sensor_id, price_sensor_id)
@@ -55,6 +57,7 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         _LOGGER.debug(f"Resetting cost for {self.entity_id}")
         self._state = 0
         self._cumulative_energy_kwh = 0
+        self._calibrated_state = 0
         self.async_write_ha_state()
 
     @property
@@ -103,8 +106,10 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         attrs['cumulative_energy_kwh'] = self._cumulative_energy_kwh
         attrs['last_energy_reading'] = self._last_energy_reading
         attrs['average_energy_cost'] = self._state / self._cumulative_energy_kwh if self._cumulative_energy_kwh else 0
+        attrs['calibrated_state'] = self._calibrated_state
         return attrs
     
+    # -----------------------------------------------------------------------------------------------
     async def async_added_to_hass(self):
         """Load the last known state and subscribe to updates."""
         await super().async_added_to_hass()
@@ -112,24 +117,31 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         last_state = await self.async_get_last_state()
         if last_state and last_state.state not in ['unknown', 'unavailable', None]:
             self._state = float(last_state.state)
+            self._calibrated_state = self._state
             self._last_energy_reading = float(last_state.attributes.get('last_energy_reading'))
+            self._calibrated_energy_reading = self._last_energy_reading
             self._cumulative_energy_kwh = float(last_state.attributes.get('cumulative_energy_kwh'))
         self.async_write_ha_state()
-        async_track_state_change_event(self.hass, self._energy_sensor_id, self._async_update_energy_price_event)
+        async_track_state_change_event(self.hass, self._energy_sensor_id, self._async_update_energy_event)
+        async_track_state_change_event(self.hass, self._price_sensor_id, self._async_update_price_event)
         self.schedule_next_reset()
 
+    # -----------------------------------------------------------------------------------------------
     def get_currency(self):
         """Extract the currency from the unit of measurement of the price sensor."""
         price_entity = self.hass.states.get(self._price_sensor_id)
         if price_entity and price_entity.attributes.get('unit_of_measurement'):
             currency = price_entity.attributes['unit_of_measurement'].split('/')[0].strip()
+            if (currency == '€'):
+                currency = 'EUR'
             _LOGGER.debug(f"Extracted currency '{currency}' from unit of measurement '{price_entity.attributes['unit_of_measurement']}'.")
             return currency
         else:
             _LOGGER.warning(f"Unit of measurement not available or invalid for sensor {self._price_sensor_id}, defaulting to 'EUR'.")
         return 'EUR'  # Default to EUR if not found
 
-
+    # -----------------------------------------------------------------------------------------------
+    # determine the next reset time
     def calculate_next_reset_time(self):
         current_time = now()
         if self._interval == "daily":
@@ -141,27 +153,60 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
             next_reset = current_time.replace(year=current_time.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
         return next_reset
 
+    # schedule a reset
     def schedule_next_reset(self):
         next_reset = self.calculate_next_reset_time()
         async_track_point_in_time(self.hass, self._reset_meter, next_reset)
 
+    # reset meter to 0, called by track point in time
     async def _reset_meter(self, _):
         self._state = 0  # Reset the cost to zero
+        self._calibrated_state = 0
         self._cumulative_energy_kwh = 0 # Reset the cumulative energy kWh count to zero
         self.async_write_ha_state() # Update the state in Home Assistant
         self.schedule_next_reset() # Reschedule the next reset
         _LOGGER.debug(f"Meter reset for {self.name} and cumulative energy reset to {self._cumulative_energy_kwh}. Next reset scheduled.")
 
-    async def _async_update_energy_price_event(self, event):
-        """Handle sensor state changes based on event data."""
+    # -----------------------------------------------------------------------------------------------
+    async def _async_update_price_event(self, event):
+        """Handle price sensor state changes."""
+        old_price_state = event.data.get('old_state')
+        energy_state = self.hass.states.get(self._energy_sensor_id)
+
+        if not energy_state or not old_price_state or energy_state.state in ['unknown', 'unavailable'] or old_price_state.state in ['unknown', 'unavailable']:
+            _LOGGER.warning("One or more sensors are unavailable. Skipping update.")
+            return
+        
+        try:
+            current_energy = float(energy_state.state)
+            price = float(old_price_state.state)
+
+            if self._calibrated_energy_reading is not None:
+                energy_difference = current_energy - self._calibrated_energy_reading
+                cost_increment = energy_difference * price
+                self._calibrated_state += cost_increment
+                _LOGGER.info(f"Energy cost calibrated from {self._state} EUR to {self._calibrated_state} EUR")
+                self._state = self._calibrated_state
+                
+            else:
+                _LOGGER.debug("No previous energy reading available; initializing with current reading.")
+
+            self._calibrated_energy_reading = current_energy  # Always update the last reading
+            self.async_write_ha_state()
+
+        except Exception as e:
+            _LOGGER.error(f"Failed to update energy costs due to an error: {e}", exc_info=True)
+        pass
+
+    # -----------------------------------------------------------------------------------------------
+    async def _async_update_energy_event(self, event):
+        """Handle energy sensor state changes."""
         new_state = event.data.get('new_state')
         if new_state is None or new_state.state in ['unknown', 'unavailable']:
-            _LOGGER.debug("New state is unknown or unavailable, skipping update.")
+            _LOGGER.debug("New energy state is unknown or unavailable, skipping update.")
             return
-        await self.async_update()
 
-    async def async_update(self):
-        """Update the energy costs using the latest sensor states, only adding incremental costs."""
+        """Update the energy costs using the latest sensor states, adding both incremental as decremental costs."""
         _LOGGER.debug("Attempting to update energy costs.")
         energy_state = self.hass.states.get(self._energy_sensor_id)
         price_state = self.hass.states.get(self._price_sensor_id)
@@ -174,22 +219,17 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
             current_energy = float(energy_state.state)
             price = float(price_state.state)
 
-            if self._last_energy_reading is not None and current_energy >= self._last_energy_reading:
+            if self._last_energy_reading is not None:
                 energy_difference = current_energy - self._last_energy_reading
                 cost_increment = energy_difference * price
-                self._state = (self._state if self._state is not None else 0) + cost_increment
+                self._state += cost_increment
                 self._cumulative_energy_kwh += energy_difference  # Add to the running total of energy
                 _LOGGER.info(f"Energy cost incremented by {cost_increment} EUR, total cost now {self._state} EUR")
                 
-            elif self._last_energy_reading is not None and current_energy < self._last_energy_reading:
-                _LOGGER.debug("Possible meter reset or rollback detected; recalculating from new base.")
-                # Optionally reset the cost if you determine it's a complete reset
-                # self._state = 0  # Uncomment this if you need to reset the state
             else:
                 _LOGGER.debug("No previous energy reading available; initializing with current reading.")
 
             self._last_energy_reading = current_energy  # Always update the last reading
-
             self.async_write_ha_state()
 
         except Exception as e:
