@@ -197,10 +197,6 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
             current_cost = Decimal(new_state.state)
             _LOGGER.debug(f"Current cost retrieved from state: {current_cost}")  # Log current cost
 
-            if current_cost <= 0:  # Skip updates if the new cost is not positive
-                _LOGGER.debug(f"Skipping update as the calculated cost {current_cost} is not positive.")
-                return
-
             time_difference = now() - self._last_update
             hours_passed = Decimal(time_difference.total_seconds()) / Decimal(3600)  # Convert time difference to hours as Decimal
             _LOGGER.debug(f"Time difference calculated as: {time_difference}, which is {hours_passed} hours.")  # Log time difference in hours
