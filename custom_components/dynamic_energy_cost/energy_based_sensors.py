@@ -21,10 +21,10 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         self._state = 0
         self._unit_of_measurement = 'EUR'  # Default to EUR, will update after entity addition
         self._interval = interval
-        self._last_energy_reading = None
+        self._last_energy_reading = None        # updated on each energy change
         self._cumulative_energy_kwh = 0
-        self._calibrated_energy_reading = None
-        self._calibrated_state = 0
+        self._calibrated_energy_reading = None  # updated on last price change event
+        self._calibrated_state = 0              # updated on price changed event and used for more precise cost calculations
         self._last_reset_time = now()
         self.schedule_next_reset()
         _LOGGER.debug("Sensor initialized with energy sensor ID %s and price sensor ID %s.", energy_sensor_id, price_sensor_id)
@@ -106,7 +106,6 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         attrs['cumulative_energy_kwh'] = self._cumulative_energy_kwh
         attrs['last_energy_reading'] = self._last_energy_reading
         attrs['average_energy_cost'] = self._state / self._cumulative_energy_kwh if self._cumulative_energy_kwh else 0
-        attrs['calibrated_state'] = self._calibrated_state
         return attrs
     
     # -----------------------------------------------------------------------------------------------
