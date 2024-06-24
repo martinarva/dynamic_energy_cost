@@ -134,6 +134,14 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         current_time = now()
         if self._interval == "daily":
             next_reset = current_time.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        elif self._interval == "weekly":
+            # Calculate the date of the next Monday
+            days_until_monday = (7 - current_time.weekday()) % 7
+            next_monday = (current_time + timedelta(days=days_until_monday)).replace(hour=0, minute=0, second=0, microsecond=0)
+            # If today is Monday, set to next Monday
+            if days_until_monday == 0:
+                next_monday += timedelta(days=7)
+            next_reset = next_monday
         elif self._interval == "monthly":
             next_month = (current_time.replace(day=1) + timedelta(days=32)).replace(day=1)
             next_reset = next_month.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -201,6 +209,10 @@ class DailyEnergyCostSensor(BaseEnergyCostSensor):
     def __init__(self, hass, energy_sensor_id, price_sensor_id):
         super().__init__(hass, energy_sensor_id, price_sensor_id, "daily")
 
+class WeeklyEnergyCostSensor(BaseEnergyCostSensor):
+    def __init__(self, hass, energy_sensor_id, price_sensor_id):
+        super().__init__(hass, energy_sensor_id, price_sensor_id, "weekly")
+
 class MonthlyEnergyCostSensor(BaseEnergyCostSensor):
     def __init__(self, hass, energy_sensor_id, price_sensor_id):
         super().__init__(hass, energy_sensor_id, price_sensor_id, "monthly")
@@ -214,6 +226,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     price_sensor_id = config_entry.data.get(ELECTRICITY_PRICE_SENSOR)
     sensors = [
         DailyEnergyCostSensor(hass, energy_sensor_id, price_sensor_id),
+        WeeklyEnergyCostSensor(hass, energy_sensor_id, price_sensor_id),
         MonthlyEnergyCostSensor(hass, energy_sensor_id, price_sensor_id),
         YearlyEnergyCostSensor(hass, energy_sensor_id, price_sensor_id)
     ]
