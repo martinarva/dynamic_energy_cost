@@ -19,6 +19,7 @@ class RealTimeCostSensor(SensorEntity):
         self._electricity_price_sensor_id = electricity_price_sensor_id
         self._power_sensor_id = power_sensor_id
         self._state = Decimal(0)
+        self._unit_of_measurement = None  # Default to None, will update after entity addition
 
         _LOGGER.debug(f"Initialized Real Time Cost Sensor with price sensor: {electricity_price_sensor_id} and power sensor: {power_sensor_id}")
 
@@ -58,9 +59,7 @@ class RealTimeCostSensor(SensorEntity):
 
     @property
     def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return 'EUR/h'
-
+        return self._unit_of_measurement
 
     @callback
     def handle_state_change(self, event):
@@ -92,10 +91,22 @@ class RealTimeCostSensor(SensorEntity):
 
     async def async_added_to_hass(self):
         """Register callbacks when added to hass."""
+        self._unit_of_measurement = self.get_currency()
         async_track_state_change_event(
             self.hass, [self._electricity_price_sensor_id, self._power_sensor_id], self.handle_state_change
         )
         _LOGGER.info(f"Callbacks registered for {self._electricity_price_sensor_id} and {self._power_sensor_id}")
+
+    def get_currency(self):
+        """Get the Home Assistant default currency."""
+        currency = self.hass.config.currency
+        if currency:
+            currency_with_time = f"{currency}/h"
+            _LOGGER.debug(f"Using Home Assistant default currency '{currency_with_time}'.")
+            return currency_with_time
+        else:
+            _LOGGER.warning("No default currency set in Home Assistant.")
+            return None  # No default currency
 
 def async_setup_entry(hass, config_entry, async_add_entities):
     """Set up the sensor platform from a config entry."""
@@ -119,6 +130,7 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
         self._real_time_cost_sensor = real_time_cost_sensor
         self._interval = interval
         self._state = Decimal('0.00')
+        self._unit_of_measurement = None  # Default to None, will update after entity addition
         self._last_update = now()
         base_name = real_time_cost_sensor.name.replace(" Real Time Energy Cost", "").strip()
         self._name = f"{base_name} {interval.title()} Energy Cost"
@@ -127,6 +139,7 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
         """Restore state and set up updates when added to Home Assistant."""
         await super().async_added_to_hass()
         # Restore state if available
+        self._unit_of_measurement = self.get_currency()
         last_state = await self.async_get_last_state()
         if last_state and last_state.state not in ('unknown', 'unavailable'):
             try:
@@ -139,6 +152,16 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
             async_track_state_change_event(self.hass, [self._real_time_cost_sensor.entity_id], self._handle_real_time_cost_update)
         except Exception as e:
             _LOGGER.error("Failed to track state change: %s", str(e))
+
+    def get_currency(self):
+        """Get the Home Assistant default currency."""
+        currency = self.hass.config.currency
+        if currency:
+            _LOGGER.debug(f"Using Home Assistant default currency '{currency}'.")
+            return currency
+        else:
+            _LOGGER.warning("No default currency set in Home Assistant.")
+            return None  # No default currency
 
     def calculate_next_reset_time(self):
         """Determine the exact datetime for the next reset based on the interval."""
@@ -234,8 +257,7 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
 
     @property
     def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return 'EUR'
+        return self._unit_of_measurement
 
     @property
     def device_class(self):
