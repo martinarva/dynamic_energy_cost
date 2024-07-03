@@ -19,7 +19,7 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         self._energy_sensor_id = energy_sensor_id
         self._price_sensor_id = price_sensor_id
         self._state = None
-        self._unit_of_measurement = 'EUR'  # Default to EUR, will update after entity addition
+        self._unit_of_measurement = None  # Default to None, will update after entity addition
         self._interval = interval
         self._last_energy_reading = None
         self._cumulative_energy_kwh = 0
@@ -119,15 +119,14 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         self.schedule_next_reset()
 
     def get_currency(self):
-        """Extract the currency from the unit of measurement of the price sensor."""
-        price_entity = self.hass.states.get(self._price_sensor_id)
-        if price_entity and price_entity.attributes.get('unit_of_measurement'):
-            currency = price_entity.attributes['unit_of_measurement'].split('/')[0].strip()
-            _LOGGER.debug(f"Extracted currency '{currency}' from unit of measurement '{price_entity.attributes['unit_of_measurement']}'.")
+        """Get the Home Assistant default currency."""
+        currency = self.hass.config.currency
+        if currency:
+            _LOGGER.debug(f"Using Home Assistant default currency '{currency}'.")
             return currency
         else:
-            _LOGGER.warning(f"Unit of measurement not available or invalid for sensor {self._price_sensor_id}, defaulting to 'EUR'.")
-        return 'EUR'  # Default to EUR if not found
+            _LOGGER.warning("No default currency set in Home Assistant.")
+            return None  # No default currency
 
 
     def calculate_next_reset_time(self):
