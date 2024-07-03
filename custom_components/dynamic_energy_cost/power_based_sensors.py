@@ -205,7 +205,7 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
             hours_passed = Decimal(time_difference.total_seconds()) / Decimal(3600)  # Convert time difference to hours as Decimal
             _LOGGER.debug(f"Time difference calculated as: {time_difference}, which is {hours_passed} hours.")  # Log time difference in hours
 
-            self._state += (current_cost * hours_passed).quantize(Decimal('0.01'))
+            self._state += (current_cost * hours_passed).quantize(Decimal('0.0001'))
             self._last_update = now()
             self.async_write_ha_state()
             _LOGGER.debug(f"Updated state to: {self._state} using cost: {current_cost} over {hours_passed} hours")
