@@ -1,11 +1,12 @@
 import logging
 from datetime import timedelta
-from homeassistant.util.dt import now
+from homeassistant.util.dt import now, as_local, start_of_local_day
 from homeassistant.helpers.event import async_track_state_change_event, async_track_point_in_time
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.core import callback
+from homeassistant.components import history
 from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, ENERGY_SENSOR, SERVICE_RESET_COST
 
 _LOGGER = logging.getLogger(__name__)
@@ -147,8 +148,10 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
             next_reset = next_month.replace(hour=0, minute=0, second=0, microsecond=0)
         elif self._interval == "yearly":
             next_reset = current_time.replace(year=current_time.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-        elif self._interval == "total":
+        elif self._interval == "total" or self._interval == "yesterday":
             next_reset = None
+        if self._interval == "avg":
+            next_reset = current_time.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
         return next_reset
 
     def schedule_next_reset(self):
@@ -212,6 +215,18 @@ class DailyEnergyCostSensor(BaseEnergyCostSensor):
     def __init__(self, hass, energy_sensor_id, price_sensor_id):
         super().__init__(hass, energy_sensor_id, price_sensor_id, "daily")
 
+    async def _reset_meter(self, _):
+        # Call the parent reset method
+        await super()._reset_meter(_)
+        # Find and reset the YesterdayEnergyCostSensor
+        yesterday_sensor = next(
+            (sensor for sensor in self.hass.data['sensors']
+             if isinstance(sensor, YesterdayEnergyCostSensor)), 
+            None)
+        if yesterday_sensor:
+            _LOGGER.debug(f"Triggering reset for YesterdayEnergyCostSensor")
+            await yesterday_sensor.async_reset()
+
 class WeeklyEnergyCostSensor(BaseEnergyCostSensor):
     def __init__(self, hass, energy_sensor_id, price_sensor_id):
         super().__init__(hass, energy_sensor_id, price_sensor_id, "weekly")
@@ -227,6 +242,79 @@ class YearlyEnergyCostSensor(BaseEnergyCostSensor):
 class TotalEnergyCostSensor(BaseEnergyCostSensor):
     def __init__(self, hass, energy_sensor_id, price_sensor_id):
         super().__init__(hass, energy_sensor_id, price_sensor_id, "total")
+        _LOGGER.debug(f"TotalEnergyCostSensor initialized with energy_sensor_id: {energy_sensor_id} and price_sensor_id: {price_sensor_id}")
+
+class YesterdayEnergyCostSensor(BaseEnergyCostSensor):
+    def __init__(self, hass, energy_sensor_id, price_sensor_id):
+        super().__init__(hass, energy_sensor_id, price_sensor_id, "avg")
+        self._previous_day_cost = 0
+
+    @callback
+    def async_reset(self):
+        """Reset the energy cost for the sensor and store today's cost as yesterday's cost."""
+        _LOGGER.debug(f"Resetting cost for {self.entity_id}")
+        self._previous_day_cost = self._state if self._state is not None else 0
+        self._state = 0
+        self._cumulative_energy_kwh = 0
+        self.async_write_ha_state()
+        _LOGGER.debug(f"Yesterday's cost stored: {self._previous_day_cost}")
+
+    @property
+    def state(self):
+        return self._previous_day_cost
+    
+class AverageDailyEnergyCostSensor(BaseEnergyCostSensor):
+    def __init__(self, hass, energy_sensor_id, price_sensor_id):
+        super().__init__(hass, energy_sensor_id, price_sensor_id, "average_daily")
+        self._average_daily_cost = 0
+
+    async def calculate_daily_average(self):
+        """Calculate the average daily energy cost based on available historical data."""
+        end_date = start_of_local_day(now())
+        start_date = end_date - timedelta(days=8)  # 7 days before the start of today       
+
+    # Fetch historical cost data from the TotalEnergyCostSensor
+        try:
+            total_sensor = next(
+                (sensor for sensor in self.hass.data['sensors']
+                if isinstance(sensor, TotalEnergyCostSensor)), 
+                None)
+            if total_sensor is None:
+                _LOGGER.error("TotalEnergyCostSensor not found.")
+                self._average_daily_cost = 0
+                self.async_write_ha_state()
+                return
+
+            historical_data = await self.hass.helpers.history.get_significant_states(start_date, end_date, [total_sensor.entity_id])
+        except Exception as e:
+            _LOGGER.error(f"Failed to fetch historical data: {e}")
+            self._average_daily_cost = 0
+            self.async_write_ha_state()
+            return
+
+        total_cost = 0
+        total_days = 0
+        last_reading = None
+
+
+        for entry in historical_data:
+            if entry.entity_id == total_sensor.entity_id:
+                current_reading = float(entry.state)
+                if last_reading is not None:
+                    daily_cost = current_reading - last_reading
+                    if daily_cost > 0:
+                        total_cost += daily_cost
+                        total_days += 1
+                last_reading = current_reading
+
+        if total_days > 0:
+            self._average_daily_cost = total_cost / total_days
+        else:
+            self._average_daily_cost = 0
+
+        self.async_write_ha_state()
+
+
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     energy_sensor_id = config_entry.data.get(ENERGY_SENSOR)
@@ -236,6 +324,10 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         WeeklyEnergyCostSensor(hass, energy_sensor_id, price_sensor_id),
         MonthlyEnergyCostSensor(hass, energy_sensor_id, price_sensor_id),
         YearlyEnergyCostSensor(hass, energy_sensor_id, price_sensor_id),
-        TotalEnergyCostSensor(hass, energy_sensor_id, price_sensor_id)
+        TotalEnergyCostSensor(hass, energy_sensor_id, price_sensor_id),
+        YesterdayEnergyCostSensor(hass, energy_sensor_id, price_sensor_id),
+        AverageDailyEnergyCostSensor(hass, energy_sensor_id, price_sensor_id)
+        
     ]
+    _LOGGER.debug("Adding sensors: %s", [sensor.name for sensor in sensors])
     async_add_entities(sensors, True)
