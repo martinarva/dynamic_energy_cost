@@ -40,7 +40,8 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 config = {
                     "electricity_price_sensor": user_input["electricity_price_sensor"],
                     "power_sensor": user_input.get("power_sensor"),
-                    "energy_sensor": user_input.get("energy_sensor")
+                    "energy_sensor": user_input.get("energy_sensor"),
+                    # "name": user_input.get("name", None)  # Get the name or default to None
                 }
                 _LOGGER.info("Config entry created successfully.")
                 return self.async_create_entry(title="Dynamic Energy Cost", data=config)
@@ -57,7 +58,8 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ),
             vol.Optional("energy_sensor"): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor", multiple=False, device_class="energy")
-            )
+            ),
+            # vol.Optional("name"): str  # Add the optional name field
         })
 
         return self.async_show_form(
@@ -65,6 +67,7 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=schema,
             errors=errors,
             description_placeholders={
+                # "name": "Custom Name (Optional)",
                 "electricity_price_sensor": "Electricity Price Sensor",
                 "power_sensor": "Power Usage Sensor",
                 "energy_sensor": "Energy (kWh) Sensor",

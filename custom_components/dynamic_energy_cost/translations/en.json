@@ -7,7 +7,8 @@
         "data": {
           "electricity_price_sensor": "Electricity Price Sensor Entity ID (eur/kWh)",
           "power_sensor": "Power Usage Sensor Entity ID (W) - Optional if energy sensor is provided",
-          "energy_sensor": "Energy Usage Sensor Entity ID (kWh) - Optional if power sensor is provided"
+          "energy_sensor": "Energy Usage Sensor Entity ID (kWh) - Optional if power sensor is provided",
+          "name": "(Optional) Sensor name - leave blank for default"
         }
       }
     },
