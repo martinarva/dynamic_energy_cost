@@ -18,7 +18,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     
     try:
         _LOGGER.debug("Attempting to forward Dynamic Energy Cost entry setup to the sensor platform.")
-        setup_result = await hass.config_entries.async_forward_entry_setup(entry, 'sensor')
+        setup_result = await hass.config_entries.async_forward_entry_setups(entry, 'sensor')
         _LOGGER.debug("Forwarding to sensor setup was successful: %s", setup_result)
     except Exception as e:
         _LOGGER.error("Failed to set up sensor platform, error: %s", str(e))
