@@ -1,0 +1,24 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurez votre intégration de coûts énergétiques dynamiques",
+        "description": "Sélectionnez soit un capteur de puissance (W) ou un capteur d’énergie (kWh), ainsi que le capteur de prix (CAD/kWh).",
+        "data": {
+          "electricity_price_sensor": "Prix de l’électricité Capteur Entité ID (CAD/kWh)",
+          "power_sensor": "Identifiant de l’entité du capteur (W) - Facultatif si le capteur d’énergie est fourni",
+          "energy_sensor": "Numéro d’entité du capteur (kWh) - Facultatif si le capteur de puissance est fourni"
+        }
+      }
+    },
+    "error": {
+      "invalid_entity": "Identifiant d’entité non valide fourni.",
+      "invalid_config": "Veuillez choisir soit un capteur de puissance, soit un capteur d’énergie.",
+      "missing_sensor": "Entrez au moins un capteur de puissance ou un capteur d’énergie."
+    },
+    "success": {
+      "title": "Success",
+      "description": "Votre intégration de coûts énergétiques dynamiques est maintenant configurée."
+    }
+  }
+}
