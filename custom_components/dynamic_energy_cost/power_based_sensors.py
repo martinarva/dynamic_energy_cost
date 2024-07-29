@@ -191,7 +191,7 @@ class UtilityMeterSensor(SensorEntity, RestoreEntity):
 
         # Cancel existing scheduled reset if it exists
         if hasattr(self, '_reset_timer'):
-            self.hass.async_create_task(self.hass.async_remove_job(self._reset_timer))
+            self.hass.async_create_task(self.hass.async_create_task(self.hass.async_run_job(self._reset_timer)))
 
         # Log the scheduling of the next reset
         _LOGGER.debug(f"Scheduling next reset for {self._name} at {next_reset_time}")
