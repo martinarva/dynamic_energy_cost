@@ -15,13 +15,17 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def generate_friendly_name(self, sensor_id: str) -> str:
         """Generate a friendly name from the sensor ID."""
+        #Exclude words
+        exclude_words = ['energy', 'day', 'daily', 'month', 'monthly', 'today', 'a', 'an', 'the', 'and', 'of', 'in']
         # Remove common prefix like 'sensor.'
         if sensor_id.startswith('sensor.'):
             sensor_id = sensor_id[len('sensor.'):]
         # Replace underscores and dots with spaces
-        name = sensor_id.replace('_', ' ').replace('.', ' ')
-        # Capitalize first letter of each word, except small common words
-        name = ' '.join(word.capitalize() if word.lower() not in ['a', 'an', 'the', 'and', 'of', 'in'] else word for word in name.split())
+        base_part = sensor_id.split('.')[-1]  # Extract base part
+        friendly_name_parts = base_part.replace('_', ' ').split()  # Replace underscores and split
+        filtered_parts = [word for word in friendly_name_parts if word.lower() not in exclude_words]  # Filter out excluded words
+        name = ' '.join(filtered_parts).title()  # Join and capitalize
+
         return name
 
     async def async_step_user(self, user_input=None):

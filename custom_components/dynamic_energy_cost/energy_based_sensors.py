@@ -42,7 +42,7 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         _LOGGER.debug(f"Parts after replacing underscores and splitting: {friendly_name_parts}")
 
         # Exclude words that are commonly not part of the main identifier
-        exclude_words = ['energy', 'day', 'daily', 'month', 'monthly']
+        exclude_words = ['energy', 'day', 'daily', 'month', 'monthly', 'today']
         friendly_name_parts = [word for word in friendly_name_parts if word.lower() not in exclude_words]
         _LOGGER.debug(f"Parts after removing excluded wors: {friendly_name_parts}")
 
