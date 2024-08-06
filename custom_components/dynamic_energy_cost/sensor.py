@@ -1,6 +1,6 @@
 import logging
 from .energy_based_sensors import (BaseEnergyCostSensor, DailyEnergyCostSensor, WeeklyEnergyCostSensor, MonthlyEnergyCostSensor,
-                                   YearlyEnergyCostSensor, TotalEnergyCostSensor, YesterdayEnergyCostSensor, AverageDailyEnergyCostSensor)
+                                   YearlyEnergyCostSensor, TotalEnergyCostSensor, AverageDailyEnergyCostSensor, HourlyEnergyCostSensor)
 from .power_based_sensors import RealTimeCostSensor, UtilityMeterSensor
 from homeassistant.helpers import entity_platform
 from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, ENERGY_SENSOR, POWER_SENSOR, SERVICE_RESET_COST
@@ -30,7 +30,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             hass, config_entry, electricity_price_sensor, power_sensor, 'Real Time Energy Cost'
         )
         sensors.append(real_time_cost_sensor)
-        intervals = ['daily', 'monthly', 'yearly', 'total', 'yesterday', 'avg']
+        intervals = ['daily','weekly', 'monthly', 'yearly', 'total', 'avg','hourly']
         utility_sensors = [UtilityMeterSensor(hass, real_time_cost_sensor, interval) for interval in intervals]
         sensors.extend(utility_sensors)
 
@@ -42,8 +42,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         sensors.append(MonthlyEnergyCostSensor(hass, energy_sensor, electricity_price_sensor))
         sensors.append(YearlyEnergyCostSensor(hass, energy_sensor, electricity_price_sensor))
         sensors.append(TotalEnergyCostSensor(hass, energy_sensor, electricity_price_sensor))
-        sensors.append(YesterdayEnergyCostSensor(hass, energy_sensor, electricity_price_sensor))
         sensors.append(AverageDailyEnergyCostSensor(hass, energy_sensor, electricity_price_sensor))
+        sensors.append(HourlyEnergyCostSensor(hass, energy_sensor, electricity_price_sensor))
 
     if sensors:
         async_add_entities(sensors, True)
