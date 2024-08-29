@@ -1,11 +1,11 @@
 import logging
 from datetime import timedelta
-from homeassistant.util.dt import now
+from homeassistant.util.dt import now, as_local, start_of_local_day
 from homeassistant.helpers.event import async_track_state_change_event, async_track_point_in_time
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass, SensorStateClass
-from homeassistant.helpers import entity_platform
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.core import callback
+
 from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, ENERGY_SENSOR, SERVICE_RESET_COST
 
 _LOGGER = logging.getLogger(__name__)
@@ -23,6 +23,7 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         self._interval = interval
         self._last_energy_reading = None
         self._cumulative_energy_kwh = 0
+        self._previous_cycle = 0
         self._last_reset_time = now()
         self.schedule_next_reset()
         _LOGGER.debug("Sensor initialized with energy sensor ID %s and price sensor ID %s.", energy_sensor_id, price_sensor_id)
@@ -37,8 +38,9 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         _LOGGER.debug(f"Parts after replacing underscores and splitting: {friendly_name_parts}")
 
         # Exclude words that are commonly not part of the main identifier
-        friendly_name_parts = [word for word in friendly_name_parts if word.lower() != 'energy']
-        _LOGGER.debug(f"Parts after removing 'energy': {friendly_name_parts}")
+        exclude_words = ['energy', 'day', 'daily', 'month', 'monthly', 'today']
+        friendly_name_parts = [word for word in friendly_name_parts if word.lower() not in exclude_words]
+        _LOGGER.debug(f"Parts after removing excluded wors: {friendly_name_parts}")
 
         friendly_name = ' '.join(friendly_name_parts).title()
         _LOGGER.debug(f"Final friendly name generated: {friendly_name}")
@@ -59,6 +61,7 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
 
     @property
     def unique_id(self):
+        _LOGGER.debug(f"Defining unique_id of {self._price_sensor_id}_{self._energy_sensor_id}_{self._interval}_cost")
         return f"{self._price_sensor_id}_{self._energy_sensor_id}_{self._interval}_cost"
 
     @property
@@ -103,6 +106,7 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         attrs['cumulative_energy_kwh'] = self._cumulative_energy_kwh
         attrs['last_energy_reading'] = self._last_energy_reading
         attrs['average_energy_cost'] = self._state / self._cumulative_energy_kwh if self._cumulative_energy_kwh else 0
+        attrs['previous_cycle'] = self._previous_cycle
         return attrs
     
     async def async_added_to_hass(self):
@@ -114,6 +118,7 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
             self._state = float(last_state.state)
             self._last_energy_reading = float(last_state.attributes.get('last_energy_reading'))
             self._cumulative_energy_kwh = float(last_state.attributes.get('cumulative_energy_kwh'))
+            self._previous_cycle = float(last_state.attributes.get('_previous_cycle'))
         self.async_write_ha_state()
         async_track_state_change_event(self.hass, self._energy_sensor_id, self._async_update_energy_price_event)
         self.schedule_next_reset()
@@ -131,8 +136,11 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
 
     def calculate_next_reset_time(self):
         current_time = now()
-        if self._interval == "daily":
+        if self._interval == "daily" or self._interval == "avg":   
             next_reset = current_time.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        elif self._interval == "hourly":
+            next_reset = current_time.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+            _LOGGER.debug(f"Meter reset scheduled and set to  {next_reset}.") #delete
         elif self._interval == "weekly":
             # Calculate the date of the next Monday
             days_until_monday = (7 - current_time.weekday()) % 7
@@ -146,13 +154,21 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
             next_reset = next_month.replace(hour=0, minute=0, second=0, microsecond=0)
         elif self._interval == "yearly":
             next_reset = current_time.replace(year=current_time.year + 1, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        elif self._interval == "total":
+            next_reset = None
+        # if self._interval == "avg":
+        #     next_reset = current_time.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
         return next_reset
 
     def schedule_next_reset(self):
         next_reset = self.calculate_next_reset_time()
-        async_track_point_in_time(self.hass, self._reset_meter, next_reset)
+        if next_reset:  # Don't schedule for None (e.g., total interval)
+            async_track_point_in_time(self.hass, self._reset_meter, next_reset)
 
     async def _reset_meter(self, _):
+        _LOGGER.debug("Base _reset_meter called")
+        self._previous_cycle = self._state #Save last cycle usage
+        self.async_write_ha_state() # Update the state in Home Assistant
         self._state = 0  # Reset the cost to zero
         self._cumulative_energy_kwh = 0 # Reset the cumulative energy kWh count to zero
         self.async_write_ha_state() # Update the state in Home Assistant
@@ -204,9 +220,15 @@ class BaseEnergyCostSensor(RestoreEntity, SensorEntity):
         pass
 
 # Define sensor classes for each interval
+
+class HourlyEnergyCostSensor(BaseEnergyCostSensor):
+    def __init__(self, hass, energy_sensor_id, price_sensor_id):
+        super().__init__(hass, energy_sensor_id, price_sensor_id, "hourly")
+
+
 class DailyEnergyCostSensor(BaseEnergyCostSensor):
     def __init__(self, hass, energy_sensor_id, price_sensor_id):
-        super().__init__(hass, energy_sensor_id, price_sensor_id, "daily")
+        super().__init__(hass, energy_sensor_id, price_sensor_id, "daily")  
 
 class WeeklyEnergyCostSensor(BaseEnergyCostSensor):
     def __init__(self, hass, energy_sensor_id, price_sensor_id):
@@ -220,13 +242,22 @@ class YearlyEnergyCostSensor(BaseEnergyCostSensor):
     def __init__(self, hass, energy_sensor_id, price_sensor_id):
         super().__init__(hass, energy_sensor_id, price_sensor_id, "yearly")
 
+class TotalEnergyCostSensor(BaseEnergyCostSensor):
+    def __init__(self, hass, energy_sensor_id, price_sensor_id):
+        super().__init__(hass, energy_sensor_id, price_sensor_id, "total")
+        _LOGGER.debug(f"TotalEnergyCostSensor initialized with energy_sensor_id: {energy_sensor_id} and price_sensor_id: {price_sensor_id}")
+    
+
 async def async_setup_entry(hass, config_entry, async_add_entities):
     energy_sensor_id = config_entry.data.get(ENERGY_SENSOR)
     price_sensor_id = config_entry.data.get(ELECTRICITY_PRICE_SENSOR)
     sensors = [
         DailyEnergyCostSensor(hass, energy_sensor_id, price_sensor_id),
+        HourlyEnergyCostSensor(hass, energy_sensor_id, price_sensor_id),
         WeeklyEnergyCostSensor(hass, energy_sensor_id, price_sensor_id),
         MonthlyEnergyCostSensor(hass, energy_sensor_id, price_sensor_id),
-        YearlyEnergyCostSensor(hass, energy_sensor_id, price_sensor_id)
+        YearlyEnergyCostSensor(hass, energy_sensor_id, price_sensor_id),
+        TotalEnergyCostSensor(hass, energy_sensor_id, price_sensor_id)        
     ]
+    _LOGGER.debug("Adding sensors: %s", [sensor.name for sensor in sensors])
     async_add_entities(sensors, True)
