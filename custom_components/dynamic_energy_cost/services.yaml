@@ -1,0 +1,4 @@
+reset_cost:
+  target:
+    entity:
+      domain: sensor
