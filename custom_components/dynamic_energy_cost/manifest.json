@@ -3,7 +3,7 @@
   "name": "Dynamic Energy Cost",
   "after_dependencies": [],
   "config_flow": true,
-  "version": "0.5.0",
+  "version": "0.6.0",
   "requirements": [],
   "dependencies": [
     "sensor"

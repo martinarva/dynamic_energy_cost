@@ -1,0 +1,24 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configureer je Dynamic Energy Cost-integratie",
+        "description": "Selecteer een vermogenssensor (W) of een energiesensor (kWh), samen met de prijssensor (EUR/kWh).",
+        "data": {
+          "electricity_price_sensor": "Entity-ID van de elektriciteitsprijs sensor (eur/kWh)",
+          "power_sensor": "Entity-ID van de vermogenssensor (W) - Alleen wanneer geen energiesensor is opgegeven",
+          "energy_sensor": "Entity-ID van de energiesensor (kWh) - Alleen wanneer geen vermogenssensor is opgegeven"
+        }
+      }
+    },
+    "error": {
+      "invalid_entity": "Ongeldige entity-ID opgegeven.",
+      "invalid_config": "Kies een vermogenssensor of een energiesensor.",
+      "missing_sensor": "Voer ten minste een vermogenssensor of een energiesensor in."
+    },
+    "success": {
+      "title": "Succes",
+      "description": "Je Dynamic Energy Cost-integratie is nu geconfigureerd."
+    }
+  }
+}
