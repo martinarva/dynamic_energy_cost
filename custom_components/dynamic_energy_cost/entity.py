@@ -33,11 +33,14 @@ class BaseUtilitySensor(SensorEntity):
         current_time = now()
 
         if self._interval == DAILY:
-            next_reset = current_time.replace(
+            ## Only activate for testing purpose:
+            # return current_time + timedelta(seconds=30)
+
+            return current_time.replace(
                 hour=0, minute=0, second=0, microsecond=0
             ) + timedelta(days=1)
 
-        elif self._interval == WEEKLY:
+        if self._interval == WEEKLY:
             # Calculate the date of the next Monday
             days_until_monday = (7 - current_time.weekday()) % 7
             next_monday = (current_time + timedelta(days=days_until_monday)).replace(
@@ -46,16 +49,16 @@ class BaseUtilitySensor(SensorEntity):
             # If today is Monday, set to next Monday
             if days_until_monday == 0:
                 next_monday += timedelta(days=7)
-            next_reset = next_monday
+            return next_monday
 
-        elif self._interval == MONTHLY:
+        if self._interval == MONTHLY:
             next_month = (current_time.replace(day=1) + timedelta(days=32)).replace(
                 day=1
             )
-            next_reset = next_month.replace(hour=0, minute=0, second=0, microsecond=0)
+            return next_month.replace(hour=0, minute=0, second=0, microsecond=0)
 
-        elif self._interval == YEARLY:
-            next_reset = current_time.replace(
+        if self._interval == YEARLY:
+            return current_time.replace(
                 year=current_time.year + 1,
                 month=1,
                 day=1,
@@ -64,7 +67,8 @@ class BaseUtilitySensor(SensorEntity):
                 second=0,
                 microsecond=0,
             )
-        return next_reset
+
+        return None
 
     def schedule_next_reset(self):
         """Schedule the next reset based on the interval, cancelling any previous schedules."""
@@ -73,9 +77,6 @@ class BaseUtilitySensor(SensorEntity):
             return
 
         next_reset = self.calculate_next_reset_time()
-        # Cancel existing scheduled reset if it exists
-        if self.event_unsub:
-            self.event_unsub()
 
         # Log the scheduling of the next reset
         _LOGGER.debug("Scheduling next reset for %s at %s", self.name, next_reset)
@@ -86,25 +87,28 @@ class BaseUtilitySensor(SensorEntity):
         )
         _LOGGER.debug("Next reset scheduled successfully")
 
-        async_track_point_in_time(self.hass, self._async_reset_meter, next_reset)
-
-    async def _async_reset_meter(self, _):
+    @callback
+    def _async_reset_meter(self, *args) -> None:
         """Reset the meter at the specified interval or from the reset event."""
-        self._async_reset_meter()
-        self.schedule_next_reset()  # Reschedule the next reset
-        _LOGGER.debug(
-            "Meter reset for %s and cumulative energy reset to %s. Next reset scheduled",
-            self.name,
-            self._cumulative_energy_kwh,
-        )
+        self.async_reset()
+        self.schedule_next_reset()
 
     @callback
-    def async_reset(self):
+    def async_reset(self, *args):
         """Reset the energy cost and cumulative energy kWh."""
-        self._state = 0.00
+        self._state = Decimal(0) if type(self._state) is Decimal else 0
+
+        if hasattr(self, "_cumulative_energy_kwh"):
+            self._cumulative_energy_kwh = 0  # pylint: disable=attribute-defined-outside-init
+
         self._last_update = now()
         self.async_write_ha_state()
         _LOGGER.debug("Meter reset for %s", self._name)
+
+    async def async_will_remove_from_hass(self):
+        """Remove the reset event from the schedule."""
+        if self.event_unsub:
+            await self.hass.async_add_executor_job(self.event_unsub())
 
     @property
     def state(self):
