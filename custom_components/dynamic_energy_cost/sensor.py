@@ -13,6 +13,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util.dt import now
 
 from .const import (
+    HOURLY,
     DAILY,
     DOMAIN,
     ELECTRICITY_PRICE_SENSOR,
@@ -26,7 +27,7 @@ from .const import (
 )
 from .entity import BaseUtilitySensor
 
-INTERVALS = [DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
+INTERVALS = [HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -6,6 +6,7 @@ POWER_SENSOR = "power_sensor"
 ENERGY_SENSOR = "energy_sensor"
 SERVICE_RESET_COST = "reset_cost"
 
+HOURLY = "hourly"
 DAILY = "daily"
 WEEKLY = "weekly"
 MONTHLY = "monthly"
