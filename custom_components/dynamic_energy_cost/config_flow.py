@@ -54,15 +54,17 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "electricity_price_sensor": user_input["electricity_price_sensor"],
                     "power_sensor": user_input.get("power_sensor"),
                     "energy_sensor": user_input.get("energy_sensor"),
+                    "integration_description": user_input.get("integration_description", "Unnamed"),
                 }
                 _LOGGER.info("Config entry created successfully")
-                return self.async_create_entry(title="Dynamic Energy Cost", data=config)
+                return self.async_create_entry(title=f"Dynamic Energy Cost - {user_input.get('integration_description', 'Unnamed')}", data=config)
             except vol.Invalid as err:
                 _LOGGER.error("Validation error: %s", err)
                 errors["base"] = "invalid_entity"
 
         schema = vol.Schema(
             {
+                vol.Optional("integration_description"): selector.TextSelector(),
                 vol.Required("electricity_price_sensor"): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor", multiple=False)
                 ),
@@ -84,6 +86,7 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=schema,
             errors=errors,
             description_placeholders={
+                "integration_description": "Name to append the integration title",
                 "electricity_price_sensor": "Electricity Price Sensor",
                 "power_sensor": "Power Usage Sensor",
                 "energy_sensor": "Energy (kWh) Sensor",
