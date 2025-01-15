@@ -350,7 +350,7 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
                 energy_difference = current_energy - self._last_energy_reading
                 cost_increment = energy_difference * price
                 self._state = (
-                    self._state if self._state is not None else 0
+                    self._state if self._state is not None else 0.0
                 ) + cost_increment
                 self._cumulative_energy_kwh += (
                     energy_difference  # Add to the running total of energy
