@@ -5,7 +5,7 @@ This Home Assistant custom integration provides a sophisticated real-time and cu
 ## Features
 
 - **Real-Time Cost Sensor (only Power Based):** Calculates energy costs in real-time based on current power usage in watts (W) and electricity prices.
-- **Daily, Monthly and Yearly Cost (Energy and Power Based):** Automatically generates daily, monthly, and yearly accumulations of costs, facilitating detailed and segmented analysis of energy expenses. These are based on actual energy usage in kilowatt-hours (kWh), providing precision aligned with the Home Assistant Energy Dashboard.
+- **Hourly, Daily, Weekly, Monthly and Yearly Cost (Energy and Power Based):** Automatically generates daily, monthly, and yearly accumulations of costs, facilitating detailed and segmented analysis of energy expenses. These are based on actual energy usage in kilowatt-hours (kWh), providing precision aligned with the Home Assistant Energy Dashboard.
 - **Sensor without reset interval (Energy and Power Based)** Similar to the above, but does not reset automatically. It resets only when the service `dynamic_energy_cost.reset_cost` is called. Making it perfect for calculating specific costs, such as the expenses for individual charging sessions of an electric car.
 - **Enhanced Sensor Attributes:** Energy Based Sensors include attributes for total energy used (kWh) and the average energy price, aiding in energy usage optimization during cheaper hours.
 
