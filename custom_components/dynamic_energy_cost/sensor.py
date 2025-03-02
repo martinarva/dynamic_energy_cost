@@ -240,7 +240,7 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         self._energy_sensor_id = energy_sensor_id
         self._price_sensor_id = price_sensor_id
         self._last_energy_reading = None
-        self._cumulative_energy_kwh = 0
+        self._cumulative_energy_kwh = 0.0
 
         _LOGGER.debug(
             "Sensor initialized with energy sensor ID %s and price sensor ID %s",
@@ -291,7 +291,7 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         attrs["average_energy_cost"] = (
             self._state / self._cumulative_energy_kwh
             if self._cumulative_energy_kwh
-            else 0
+            else 0.0
         )
         return attrs
 
