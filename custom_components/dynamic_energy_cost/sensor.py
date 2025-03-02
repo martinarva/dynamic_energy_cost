@@ -444,7 +444,7 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
                 "Current cost retrieved from state: %s", current_cost
             )  # Log current cost
 
-            if current_cost <= 0:  # Skip updates if the new cost is not positive
+            if current_cost <= 0.0:  # Skip updates if the new cost is not positive
                 _LOGGER.debug(
                     "Skipping update as the calculated cost %s is not positive",
                     current_cost,
