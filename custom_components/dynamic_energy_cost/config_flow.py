@@ -100,7 +100,6 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     # Change existing config added !!
     @staticmethod
-    @callback
     def async_get_options_flow(config_entry):
         """Get the options flow for this handler."""
         return DynamicEnergyCostOptionsFlow(config_entry)
