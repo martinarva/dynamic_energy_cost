@@ -378,49 +378,49 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
             _LOGGER.error("Failed to update energy costs due to an error: %s", str(e))
 
 
-# -----------------------------------------------------------------------------------------------
-# when there is a new energy reading we update our state based on the last _cumulative_cost (which is set on each price event)
-async def _async_update_energy_event(self, event):
-    """Handle energy sensor state changes."""
-    """Update the energy costs using the latest sensor states, adding both incremental as decremental costs."""
-    try:
-        energy_state = event.data.get("new_state")
-        price_state = self.hass.states.get(self._price_sensor_id)
-
-        if (
-            not energy_state
-            or not price_state
-            or energy_state.state in ["unknown", "unavailable"]
-            or price_state.state in ["unknown", "unavailable"]
-        ):
-            _LOGGER.debug("One or more sensors are unavailable. Skipping update.")
-            return
-
-        current_energy = float(energy_state.state)
-        price = float(price_state.state)
-
-        if self._last_energy_reading is None:
-            _LOGGER.debug(
-                "No previous energy reading available; initializing with current reading."
+    # -----------------------------------------------------------------------------------------------
+    # when there is a new energy reading we update our state based on the last _cumulative_cost (which is set on each price event)
+    async def _async_update_energy_event(self, event):
+        """Handle energy sensor state changes."""
+        """Update the energy costs using the latest sensor states, adding both incremental as decremental costs."""
+        try:
+            energy_state = event.data.get("new_state")
+            price_state = self.hass.states.get(self._price_sensor_id)
+    
+            if (
+                not energy_state
+                or not price_state
+                or energy_state.state in ["unknown", "unavailable"]
+                or price_state.state in ["unknown", "unavailable"]
+            ):
+                _LOGGER.debug("One or more sensors are unavailable. Skipping update.")
+                return
+    
+            current_energy = float(energy_state.state)
+            price = float(price_state.state)
+    
+            if self._last_energy_reading is None:
+                _LOGGER.debug(
+                    "No previous energy reading available; initializing with current reading."
+                )
+                self._last_energy_reading = (
+                    current_energy  # Initialize with current reading
+                )
+                return
+    
+            energy_difference = current_energy - self._last_energy_reading
+            cost_increment = energy_difference * price
+            self._state = (
+                self._cumulative_cost + cost_increment
+            )  # set state to the cumulative cost + increment since last energy reading
+            _LOGGER.info(
+                f"Energy cost incremented by {cost_increment} on top of {self._cumulative_cost}, total cost now {self._state} EUR"
             )
-            self._last_energy_reading = (
-                current_energy  # Initialize with current reading
-            )
-            return
-
-        energy_difference = current_energy - self._last_energy_reading
-        cost_increment = energy_difference * price
-        self._state = (
-            self._cumulative_cost + cost_increment
-        )  # set state to the cumulative cost + increment since last energy reading
-        _LOGGER.info(
-            f"Energy cost incremented by {cost_increment} on top of {self._cumulative_cost}, total cost now {self._state} EUR"
-        )
-
-        self.async_write_ha_state()
-
-    except Exception as e:  # noqa: BLE001
-        _LOGGER.error("Failed to update energy costs due to an error: %s", str(e))
+    
+            self.async_write_ha_state()
+    
+        except Exception as e:  # noqa: BLE001
+            _LOGGER.error("Failed to update energy costs due to an error: %s", str(e))
 
 
 # -----------------------------------------------------------------------------------------------
