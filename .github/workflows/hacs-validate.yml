@@ -1,0 +1,20 @@
+name: HACS Validation
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 0 * * *' # Run daily at midnight
+  workflow_dispatch:
+
+jobs:
+  validate-hacs:
+    if: github.repository == 'bvweerd/dynamic_energy_cost'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: HACS validation
+        uses: hacs/action@main
+        with:
+          category: 'plugin'
