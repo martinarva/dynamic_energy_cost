@@ -225,6 +225,8 @@ class RealTimeCostSensor(SensorEntity):
         )
 
 
+# -----------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------
 class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
     """Base sensor for handling energy cost data."""
 
@@ -240,7 +242,8 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         self._energy_sensor_id = energy_sensor_id
         self._price_sensor_id = price_sensor_id
         self._last_energy_reading = None
-        self._cumulative_energy_kwh = 0.0
+        self._cumulative_energy = 0.0
+        self._cumulative_cost = 0.0  # updated on price change events and used for more precise cost calculations
 
         _LOGGER.debug(
             "Sensor initialized with energy sensor ID %s and price sensor ID %s",
@@ -286,15 +289,15 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
     def extra_state_attributes(self):
         """Return the state attributes of the device."""
         attrs = super().extra_state_attributes or {}  # Ensure it's a dict
-        attrs["cumulative_energy_kwh"] = self._cumulative_energy_kwh
+        attrs["cumulative_energy"] = self._cumulative_energy
         attrs["last_energy_reading"] = self._last_energy_reading
+        attrs["cumulative_cost"] = self._cumulative_cost
         attrs["average_energy_cost"] = (
-            self._state / self._cumulative_energy_kwh
-            if self._cumulative_energy_kwh
-            else 0.0
+            self._state / self._cumulative_energy if self._cumulative_energy else 0.0
         )
         return attrs
 
+    # -----------------------------------------------------------------------------------------------
     async def async_added_to_hass(self):
         """Load the last known state and subscribe to updates."""
         await super().async_added_to_hass()
@@ -304,30 +307,84 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
 
         if last_state and last_state.state not in ["unknown", "unavailable", None]:
             self._state = float(last_state.state)
-            self._last_energy_reading = float(
-                last_state.attributes.get("last_energy_reading")
-            )
-            self._cumulative_energy_kwh = float(
-                last_state.attributes.get("cumulative_energy_kwh")
-            )
+            if last_state.attributes.get("last_energy_reading") is not None:
+                self._last_energy_reading = float(
+                    last_state.attributes.get("last_energy_reading")
+                )
+            if last_state.attributes.get("cumulative_energy") is not None:
+                self._cumulative_energy = float(
+                    last_state.attributes.get("cumulative_energy")
+                )
+            if last_state.attributes.get("cumulative_cost") is not None:
+                self._cumulative_cost = float(
+                    last_state.attributes.get("cumulative_cost")
+                )
         self.async_write_ha_state()
+        # track energy sensor changes
         async_track_state_change_event(
-            self.hass, self._energy_sensor_id, self._async_update_energy_price_event
+            self.hass, self._energy_sensor_id, self._async_update_energy_event
+        )
+        # track also the price sensor changes for more accuracy
+        async_track_state_change_event(
+            self.hass, self._price_sensor_id, self._async_update_price_event
         )
         self.schedule_next_reset()
 
-    async def _async_update_energy_price_event(self, event: Event):
-        """Handle sensor state changes based on event data."""
-        new_state = event.data.get("new_state")
-        if new_state is None or new_state.state in ["unknown", "unavailable"]:
-            _LOGGER.debug("New state is unknown or unavailable, skipping update")
-            return
-        await self.async_update()
+    # -----------------------------------------------------------------------------------------------
+    # when there is a price change we recalculate the _cumulative_cost and sync the state to this clibrated value
+    async def _async_update_price_event(self, event):
+        """Handle price sensor state changes."""
+        try:
+            old_price_state = event.data.get("old_state")
+            energy_state = self.hass.states.get(
+                self._energy_sensor_id
+            )  # current energy readings
 
-    async def async_update(self):
-        """Update the energy costs using the latest sensor states, only adding incremental costs."""
-        _LOGGER.debug("Attempting to update energy costs")
-        energy_state = self.hass.states.get(self._energy_sensor_id)
+            if (
+                not energy_state
+                or not old_price_state
+                or energy_state.state in ["unknown", "unavailable"]
+                or old_price_state.state in ["unknown", "unavailable"]
+            ):
+                _LOGGER.debug("One or more sensors are unavailable. Skipping update.")
+                return
+
+            current_energy = float(energy_state.state)
+            price = float(old_price_state.state)
+
+            # allow for decreasing energy readings to support energy feed-in
+            # and allow negative prices
+            if self._last_energy_reading is not None:
+                energy_difference = current_energy - self._last_energy_reading
+                cost_increment = energy_difference * price
+                self._cumulative_cost += cost_increment
+                self._state = self._cumulative_cost
+                self._cumulative_energy += (
+                    energy_difference  # Add to the running total of energy
+                )
+                _LOGGER.info(
+                    f"Change in Energy price: cumulative cost {self._cumulative_cost} EUR and cumulative energy usage to {self._cumulative_energy} kWh"
+                )
+
+            else:
+                _LOGGER.debug(
+                    "No previous energy reading available; initializing with current reading."
+                )
+
+            self._last_energy_reading = current_energy  # Always update the last reading
+            self.async_write_ha_state()
+
+        except Exception as e:  # noqa: BLE001
+            _LOGGER.error("Failed to update energy costs due to an error: %s", str(e))
+
+
+# -----------------------------------------------------------------------------------------------
+# when there is a new energy reading we update our state based on the last _cumulative_cost (which is set on each price event)
+async def _async_update_energy_event(self, event):
+    """Handle energy sensor state changes."""
+    """Update the energy costs using the latest sensor states, adding both incremental as decremental costs."""
+    try:
+        energy_state = event.data.get("new_state")
         price_state = self.hass.states.get(self._price_sensor_id)
 
         if (
@@ -336,53 +393,37 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
             or energy_state.state in ["unknown", "unavailable"]
             or price_state.state in ["unknown", "unavailable"]
         ):
-            _LOGGER.debug("One or more sensors are unavailable. Skipping update")
+            _LOGGER.debug("One or more sensors are unavailable. Skipping update.")
             return
 
-        try:
-            current_energy = float(energy_state.state)
-            price = float(price_state.state)
+        current_energy = float(energy_state.state)
+        price = float(price_state.state)
 
-            if (
-                self._last_energy_reading is not None
-                and current_energy >= self._last_energy_reading
-            ):
-                energy_difference = current_energy - self._last_energy_reading
-                cost_increment = energy_difference * price
-                self._state = (
-                    self._state if self._state is not None else 0.0
-                ) + cost_increment
-                self._cumulative_energy_kwh += (
-                    energy_difference  # Add to the running total of energy
-                )
-                _LOGGER.info(
-                    "Energy cost incremented by %s EUR, total cost now %s EUR",
-                    cost_increment,
-                    self._state,
-                )
+        if self._last_energy_reading is None:
+            _LOGGER.debug(
+                "No previous energy reading available; initializing with current reading."
+            )
+            self._last_energy_reading = (
+                current_energy  # Initialize with current reading
+            )
+            return
 
-            elif (
-                self._last_energy_reading is not None
-                and current_energy < self._last_energy_reading
-            ):
-                _LOGGER.debug(
-                    "Possible meter reset or rollback detected; recalculating from new base"
-                )
-                # Optionally reset the cost if you determine it's a complete reset
-                # self._state = 0  # Uncomment this if you need to reset the state
-            else:
-                _LOGGER.debug(
-                    "No previous energy reading available; initializing with current reading"
-                )
+        energy_difference = current_energy - self._last_energy_reading
+        cost_increment = energy_difference * price
+        self._state = (
+            self._cumulative_cost + cost_increment
+        )  # set state to the cumulative cost + increment since last energy reading
+        _LOGGER.info(
+            f"Energy cost incremented by {cost_increment} on top of {self._cumulative_cost}, total cost now {self._state} EUR"
+        )
 
-            self._last_energy_reading = current_energy  # Always update the last reading
+        self.async_write_ha_state()
 
-            self.async_write_ha_state()
-
-        except Exception as e:  # noqa: BLE001
-            _LOGGER.error("Failed to update energy costs due to an error: %s", str(e))
+    except Exception as e:  # noqa: BLE001
+        _LOGGER.error("Failed to update energy costs due to an error: %s", str(e))
 
 
+# -----------------------------------------------------------------------------------------------
 class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
     """Sensor that calculates cumulative energy costs over set intervals and resets accordingly."""
 
@@ -443,13 +484,6 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
             _LOGGER.debug(
                 "Current cost retrieved from state: %s", current_cost
             )  # Log current cost
-
-            if current_cost <= 0.0:  # Skip updates if the new cost is not positive
-                _LOGGER.debug(
-                    "Skipping update as the calculated cost %s is not positive",
-                    current_cost,
-                )
-                return
 
             time_difference = now() - self._last_update
             hours_passed = Decimal(time_difference.total_seconds()) / Decimal(
