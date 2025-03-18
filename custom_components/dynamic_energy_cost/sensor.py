@@ -243,7 +243,7 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         self._price_sensor_id = price_sensor_id
         self._last_energy_reading = None
         self._cumulative_energy = 0.0
-        self._cumulative_cost = 0.0  # updated on price change events and used for more precise cost calculations
+        self._cumulative_cost = None  # updated on price change events and used for more precise cost calculations
 
         _LOGGER.debug(
             "Sensor initialized with energy sensor ID %s and price sensor ID %s",
@@ -319,6 +319,10 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
                 self._cumulative_cost = float(
                     last_state.attributes.get("cumulative_cost")
                 )
+            else:
+                # For backwards compatibility
+                self._cumulative_cost = float(last_state.state)
+
         self.async_write_ha_state()
         # track energy sensor changes
         async_track_state_change_event(
