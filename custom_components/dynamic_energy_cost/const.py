@@ -5,6 +5,7 @@ ELECTRICITY_PRICE_SENSOR = "electricity_price_sensor"
 POWER_SENSOR = "power_sensor"
 ENERGY_SENSOR = "energy_sensor"
 SERVICE_RESET_COST = "reset_cost"
+SERVICE_CALIBRATE = "calibrate"
 
 HOURLY = "hourly"
 DAILY = "daily"
