@@ -2,6 +2,7 @@
 
 from decimal import Decimal, InvalidOperation
 import logging
+import voluptuous as vol
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
@@ -10,6 +11,7 @@ from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.template import is_number
 from homeassistant.util.dt import now
 
 from .const import (
@@ -22,6 +24,7 @@ from .const import (
     MONTHLY,
     POWER_SENSOR,
     SERVICE_RESET_COST,
+    SERVICE_CALIBRATE,
     WEEKLY,
     YEARLY,
 )
@@ -31,6 +34,11 @@ INTERVALS = [HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
 
 _LOGGER = logging.getLogger(__name__)
 
+def validate_is_number(value):
+    """Validate value is a number."""
+    if is_number(value):
+        return value
+    raise vol.Invalid("Value is not a number")
 
 async def register_entity_services():
     """Register custom services for energy cost sensors."""
@@ -40,6 +48,12 @@ async def register_entity_services():
         SERVICE_RESET_COST,
         {},  # No parameters for the service
         "async_reset",
+    )
+
+    platform.async_register_entity_service(
+        SERVICE_CALIBRATE,
+        {vol.Required("value"): validate_is_number},
+        "async_calibrate",
     )
 
 
