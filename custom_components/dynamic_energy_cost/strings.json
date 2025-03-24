@@ -1,4 +1,5 @@
 {
+  "title": "Dynamic Energy Cost",
   "config": {
     "step": {
       "user": {
@@ -8,15 +9,15 @@
           "integration_description": "Name to append the integration name",
           "electricity_price_sensor": "Electricity Price Sensor Entity (W)",
           "power_sensor": "Power Sensor Entity (eur/kwh)"
+          "energy_sensor": "Energy Usage Sensor Entity ID (kWh) - Optional if power sensor is provided"
         }
       }
     },
     "error": {
       "invalid_entity": "Invalid entity ID provided."
     },
-    "success": {
-      "title": "Success",
-      "description": "Your Dynamic Energy Cost Integration is now configured."
+    "progress": {
+      "Success": "Your Dynamic Energy Cost Integration is now configured."
     }
   }
 }
