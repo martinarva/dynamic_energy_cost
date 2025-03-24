@@ -19,8 +19,7 @@
       "missing_sensor": "Voer ten minste een vermogenssensor of een energiesensor in."
     },
     "progress": {
-      "title": "Succes",
-      "description": "Je Dynamic Energy Cost-integratie is nu geconfigureerd."
+      "Succes": "Je Dynamic Energy Cost-integratie is nu geconfigureerd."
     }
   }
 }
