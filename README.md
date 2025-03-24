@@ -27,13 +27,14 @@ target:
 
 ## Calibrating the cost sensors
 
-Dynamic Energy Cost provides a service `dynamic_energy_cost.calibrate` which you can call to change the value of a given sensor. You can call this service from the GUI (Developer tools -> Services) or use this in automations.
+Dynamic Energy Cost provides a service `dynamic_energy_cost.calibrate` which you can call to change the value of a given sensor. You can call this service from the GUI (Developer tools -> Actions) or use this in automations.
 
 ```yaml
-service: dynamic_energy_cost.calibrate
+action: dynamic_energy_cost.calibrate
 target:
   entity_id: sensor.your_sensor_entity_id
-  value: 100
+data:
+  value: "100"
 ```
 
 ## Prerequisites
