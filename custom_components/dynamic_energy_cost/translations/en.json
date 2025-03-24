@@ -19,8 +19,7 @@
       "missing_sensor": "Enter at least a power sensor or an energy sensor."
     },
     "progress": {
-      "title": "Success",
-      "description": "Your Dynamic Energy Cost Integration is now configured."
+      "Success": "Your Dynamic Energy Cost Integration is now configured."
     }
   }
 }
