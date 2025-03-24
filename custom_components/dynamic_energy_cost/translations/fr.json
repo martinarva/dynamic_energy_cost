@@ -19,8 +19,7 @@
       "missing_sensor": "Entrez au moins un capteur de puissance ou un capteur d’énergie."
     },
     "progress": {
-      "title": "Success",
-      "description": "Votre intégration de coûts énergétiques dynamiques est maintenant configurée."
+      "Success": "Votre intégration de coûts énergétiques dynamiques est maintenant configurée."
     }
   }
 }
