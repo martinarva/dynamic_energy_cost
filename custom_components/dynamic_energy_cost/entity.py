@@ -121,7 +121,8 @@ class BaseUtilitySensor(SensorEntity):
     def async_calibrate(self, value):
         """Calibrate the state with a given value."""
         _LOGGER.debug("Calibrate %s = %s type(%s)", self._name, value, type(value))
-        self._state = float(Decimal(str(value)))
+        self._cumulative_cost = float(str(value))
+        self._state = self._cumulative_cost
         self.async_write_ha_state()
 
     async def async_will_remove_from_hass(self):
