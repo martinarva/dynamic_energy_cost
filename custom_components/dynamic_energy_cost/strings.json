@@ -18,6 +18,18 @@
     },
     "progress": {
       "Success": "Your Dynamic Energy Cost Integration is now configured."
-    }
+    },
+    "services": {
+    "calibrate": {
+      "name": "Calibrate",
+      "description": "Calibrate sensor.",
+      "fields": {
+        "value": {
+          "name": "Value",
+          "description": "Set the sensor Value."
+        }
+      }
   }
 }
+}
+}  
