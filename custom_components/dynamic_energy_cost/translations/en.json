@@ -1,12 +1,12 @@
 {
-  "title": "Dynamic Energy Cost",		
+  "title": "Dynamic Energy Cost",
   "config": {
     "step": {
       "user": {
         "title": "Configure your Dynamic Energy Cost Integration",
         "description": "Select either a power sensor (W) or an energy sensor (kWh), along with the price sensor (EUR/kWh).",
         "data": {
-	  "integration_description": "Name to append the integration title",
+          "integration_description": "Name to append the integration title",
           "electricity_price_sensor": "Electricity Price Sensor Entity ID (eur/kWh)",
           "power_sensor": "Power Usage Sensor Entity ID (W) - Optional if energy sensor is provided",
           "energy_sensor": "Energy Usage Sensor Entity ID (kWh) - Optional if power sensor is provided"
@@ -22,16 +22,16 @@
       "Success": "Your Dynamic Energy Cost Integration is now configured."
     },
     "services": {
-    "calibrate": {
-      "name": "Calibrate",
-      "description": "Calibrate sensor.",
-      "fields": {
-        "value": {
-          "name": "Value",
-          "description": "Set the sensor Value."
+      "calibrate": {
+        "name": "Calibrate",
+        "description": "Calibrate sensor.",
+        "fields": {
+          "value": {
+            "name": "Value",
+            "description": "Set the sensor Value."
+          }
         }
       }
-  }
-}
+    }
   }
 }
