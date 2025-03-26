@@ -1,0 +1,37 @@
+{
+  "title": "Dynamisk Energikostnad",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Konfigurera din integration för Dynamisk Energikostnad",
+        "description": "Välj antingen en effektsensor (W) eller en energisensor (kWh), tillsammans med prissensorn (SEK/kWh).",
+        "data": {
+          "integration_description": "Namn att lägga till i integrationstiteln",
+          "electricity_price_sensor": "Enhets-ID för elprissensor (SEK/kWh)",
+          "power_sensor": "Enhets-ID för effektanvändningssensor (W) - Valfritt om energisensor tillhandahålls",
+          "energy_sensor": "Enhets-ID för energianvändningssensor (kWh) - Valfritt om effektsensor tillhandahålls"
+        }
+      }
+    },
+    "error": {
+      "invalid_entity": "Ogiltigt enhets-ID angivet.",
+      "invalid_config": "Välj antingen en effektsensor eller en energisensor.",
+      "missing_sensor": "Ange minst en effektsensor eller en energisensor."
+    },
+    "progress": {
+      "Success": "Din integration för Dynamisk Energikostnad är nu konfigurerad."
+    },
+    "services": {
+      "calibrate": {
+        "name": "Kalibrera",
+        "description": "Kalibrera sensor.",
+        "fields": {
+          "value": {
+            "name": "Värde",
+            "description": "Ställ in sensorvärdet."
+          }
+        }
+      }
+    }
+  }
+}
