@@ -1,15 +1,21 @@
 reset_cost:
+  name: Reset cost
+  description: >-
+  Reset cost of sensor.
   target:
     entity:
       domain: sensor
 calibrate:
+  name: Calibrate
+  description: >-
+  Calibrate sensor.
   target:
     entity:
       domain: sensor
       integration: utility_meter
   fields:
     value:
-      example: "100"
       required: true
+      example: "100"
       selector:
-        text:
+        number:
