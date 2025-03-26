@@ -1,14 +1,12 @@
 reset_cost:
   name: Reset cost
-  description: >-
-  Reset cost of sensor.
+  description: Reset cost of sensor.
   target:
     entity:
       domain: sensor
 calibrate:
   name: Calibrate
-  description: >-
-  Calibrate sensor.
+  description: Calibrate sensor.
   target:
     entity:
       domain: sensor
