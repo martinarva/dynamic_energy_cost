@@ -27,8 +27,8 @@
         "description": "Calibrate sensor.",
         "fields": {
           "entity_id": {
-            "name": "Value",
-            "description": "Set the sensor Value."
+            "description": "Set the sensor Value.",
+            "name": "Value"
           }
         }
       }
