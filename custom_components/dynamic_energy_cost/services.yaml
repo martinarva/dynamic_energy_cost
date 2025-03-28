@@ -13,7 +13,9 @@ calibrate:
       integration: utility_meter
   fields:
     value:
+      name: Value
+      description: Set the sensor Value.
       required: true
-      example: "100"
+      example: 100
       selector:
         number:
