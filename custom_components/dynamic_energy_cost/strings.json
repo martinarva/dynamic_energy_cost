@@ -23,11 +23,10 @@
       "description": "Set the sensor Value.",
       "fields": {
         "value": {
-          "description": "The value to set.",
-          "name": "Value"
+          "name": "Value",
+          "description": "The value to set."
         }
-      },
-      "name": "Calibrate"
+      }
     }        
   }
 }
