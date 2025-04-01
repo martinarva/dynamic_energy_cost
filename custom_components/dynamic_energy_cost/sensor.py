@@ -34,11 +34,13 @@ INTERVALS = [HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
 
 _LOGGER = logging.getLogger(__name__)
 
+
 def validate_is_number(value):
     """Validate value is a number."""
     if is_number(value):
         return value
     raise vol.Invalid("Value is not a number")
+
 
 async def register_entity_services():
     """Register custom services for energy cost sensors."""
@@ -370,9 +372,13 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
             current_energy = float(energy_state.state)
             price = float(old_price_state.state)
 
+            if current_energy == 0:
+                _LOGGER.debug(
+                    "Current energy reading is a perfect zero; assume a reset occured of the energy sensor."
+                )
             # allow for decreasing energy readings to support energy feed-in
             # and allow negative prices
-            if self._last_energy_reading is not None:
+            elif self._last_energy_reading is not None:
                 energy_difference = current_energy - self._last_energy_reading
                 cost_increment = energy_difference * price
                 self._cumulative_cost += cost_increment
@@ -395,7 +401,6 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         except Exception as e:  # noqa: BLE001
             _LOGGER.error("Failed to update energy costs due to an error: %s", str(e))
 
-
     # -----------------------------------------------------------------------------------------------
     # when there is a new energy reading we update our state based on the last _cumulative_cost (which is set on each price event)
     async def _async_update_energy_event(self, event):
@@ -404,7 +409,7 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         try:
             energy_state = event.data.get("new_state")
             price_state = self.hass.states.get(self._price_sensor_id)
-    
+
             if (
                 not energy_state
                 or not price_state
@@ -413,19 +418,19 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
             ):
                 _LOGGER.debug("One or more sensors are unavailable. Skipping update.")
                 return
-    
+
             current_energy = float(energy_state.state)
             price = float(price_state.state)
-    
-            if self._last_energy_reading is None:
+
+            if current_energy == 0 or self._last_energy_reading is None:
                 _LOGGER.debug(
-                    "No previous energy reading available; initializing with current reading."
+                    "No previous energy reading available or current reading is a perfect zero."
                 )
                 self._last_energy_reading = (
                     current_energy  # Initialize with current reading
                 )
                 return
-    
+
             energy_difference = current_energy - self._last_energy_reading
             cost_increment = energy_difference * price
             self._state = (
@@ -434,9 +439,9 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
             _LOGGER.info(
                 f"Energy cost incremented by {cost_increment} on top of {self._cumulative_cost}, total cost now {self._state} EUR"
             )
-    
+
             self.async_write_ha_state()
-    
+
         except Exception as e:  # noqa: BLE001
             _LOGGER.error("Failed to update energy costs due to an error: %s", str(e))
 
