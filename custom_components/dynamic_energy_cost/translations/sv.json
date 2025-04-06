@@ -20,18 +20,6 @@
     },
     "progress": {
       "Success": "Din integration för Dynamisk Energikostnad är nu konfigurerad."
-    },
-    "services": {
-      "calibrate": {
-        "name": "Kalibrera",
-        "description": "Kalibrera sensor.",
-        "fields": {
-          "value": {
-            "name": "Värde",
-            "description": "Ställ in sensorvärdet."
-          }
-        }
-      }
     }
   }
 }
