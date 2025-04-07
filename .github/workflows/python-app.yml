@@ -14,15 +14,19 @@ permissions:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.13']
+        
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python
+    - name: Check out the repository
+      uses: actions/checkout@v4
+    - name: Set up Python ${{ env.DEFAULT_PYTHON }}
       uses: actions/setup-python@v5
       with:
-        python-version: "3.13"
+        python-version: ${{ env.DEFAULT_PYTHON }}
     # You can test your matrix by printing the current Python version
     - name: Display Python version
       run: python -c "import sys; print(sys.version)"
