@@ -110,5 +110,5 @@ If you want, you can help with the translation via [GitLocalize](https://gitloca
 
 ## Support
 
-For support, additional instructions, or to report issues, please visit the GitHub issues page associated with this repository.
-Home Assitant Community  topic: https://community.home-assistant.io/t/dynamic-energy-cost/726931
+For support, additional instructions visit Home Assitant Community  forum topic: [Dynamic Energy Cost](https://community.home-assistant.io/t/dynamic-energy-cost/726931)  
+To report issues, please visit the [GitHub issues page associated with this repository.](https://github.com/martinarva/dynamic_energy_cost/issues)
