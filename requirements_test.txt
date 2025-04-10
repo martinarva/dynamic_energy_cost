@@ -1,2 +1,3 @@
--r requirements.txt
+pytest>=6.0
+flask>=2.0
 pytest-homeassistant-custom-component
