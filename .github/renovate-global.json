@@ -3,6 +3,7 @@
   "baseBranches": ["main"],
   "rebaseWhen": "conflicted",
   "labels": ["dependencies"],
+  "matchUpdateTypes": ["minor", "patch", "digest"],
   "automergeStrategy": "merge-commit",
   "prHourlyLimit": 2
 }
