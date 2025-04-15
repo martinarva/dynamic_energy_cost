@@ -2,11 +2,10 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "baseBranches": ["main"],
   "rebaseWhen": "conflicted",
+	"commitMessage": "Update dependencies",
   "labels": ["dependencies"],
   "matchUpdateTypes": ["minor", "patch", "digest"],
   "automergeStrategy": "merge-commit",
-  "prHourlyLimit": 2
-}
-{
-  "dependencyDashboard": true
+  "dependencyDashboard": false,
+  "prBodyTemplate": "{{{header}}}{{{table}}}{{{warnings}}}{{{notes}}}{{{changelogs}}}",
 }
