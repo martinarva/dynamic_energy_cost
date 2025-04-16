@@ -3,7 +3,7 @@ on:
   # Run at odd times to avoid overlap with too many other workflows on GitHub Actions
   # note github actions cron is in UTC so this is 20:12pm every thursday.
   schedule:
-    - cron: "12 20 * * SUN"
+    - cron: "12 23 * * WED"
 jobs:
   renovate:
     runs-on: ubuntu-latest
@@ -11,9 +11,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4.2.2
       - name: Self-hosted Renovate
-        uses: renovatebot/github-action@v41.0.18
+        uses: renovatebot/github-action@v41.0.20
         with:
-          configurationFile: .github/renovate-global.json
+          configurationFile: .github/renovate.json
           token: ${{ secrets.RENOVATE_TOKEN }}
         env:
           LOG_LEVEL: debug
