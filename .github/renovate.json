@@ -3,8 +3,12 @@
   "rebaseWhen": "conflicted",
   "commitMessage": "Update dependencies",
   "labels": ["dependencies"],
-  "matchUpdateTypes": ["minor", "patch", "digest"],
   "automergeStrategy": "merge-commit",
   "dependencyDashboard": false,
   "prBodyTemplate": "{{{header}}}{{{table}}}{{{warnings}}}{{{notes}}}{{{changelogs}}}",
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["minor", "patch", "digest"]
+    }
+  ]
 }
