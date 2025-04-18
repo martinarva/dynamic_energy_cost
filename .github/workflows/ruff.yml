@@ -8,5 +8,4 @@ jobs:
       - uses: astral-sh/ruff-action@v3
         with:
           src: "./custom_components/dynamic_energy_cost"
-      - run: ruff check --fix
-      - run: ruff format
+          args: "check --fix --format"
