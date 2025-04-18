@@ -5,13 +5,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: ruff check
+      - name: install ruff
         uses: astral-sh/ruff-action@v3
-        with:
-          src: "./custom_components/dynamic_energy_cost"
-          args: "check --fix"
-      - name: ruff format
-        uses: astral-sh/ruff-action@v3
-        with:
-          src: "./custom_components/dynamic_energy_cost"
-          args: "format"
+      - name: run ruff 
+        run: |
+         ruff check --fix
+         ruff format
+        
