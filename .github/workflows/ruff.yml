@@ -1,7 +1,7 @@
 name: Ruff
 on: [ push, pull_request ]
 env:
-  DEFAULT_PYTHON: "3.13" 
+  DEFAULT_PYTHON: "3.12" 
 jobs:
   ruff:
     runs-on: ubuntu-latest
@@ -12,6 +12,7 @@ jobs:
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
       - name: Install dependencies
+        run: |
           python -m pip install --upgrade pip
           pip install ruff
       # Update output format to enable automatic inline annotations.
