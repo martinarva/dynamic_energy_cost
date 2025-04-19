@@ -1,5 +1,9 @@
-name: Ruff
-on: [ push, pull_request ]
+name: Ruff Linter
+on: 
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 env:
   DEFAULT_PYTHON: "3.12" 
 jobs:
@@ -17,5 +21,5 @@ jobs:
           pip install ruff
       # Update output format to enable automatic inline annotations.
       - name: Run Ruff
-        run: ruff check --output-format=github .
+        run: ruff check --verbose
          
