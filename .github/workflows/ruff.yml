@@ -22,6 +22,6 @@ jobs:
       # Update output format to enable automatic inline annotations.
       - name: Run Ruff
         run: |
-          ruff check --verbose
+          ruff check --fix --verbose
           ruff format --verbose
          
