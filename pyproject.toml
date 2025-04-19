@@ -1,7 +1,10 @@
-[tool.ruff.lint]
+[tool.ruff]
 # select python version to use to check
 target-version = "py312"
+# Line lenght max
+line-length = 98
 
+[tool.ruff.lint]
 # Enabled rules
 select = [
      "B",  # bugbear: security warnings
