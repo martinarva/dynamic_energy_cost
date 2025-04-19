@@ -1,6 +1,5 @@
 [tool.ruff.lint]
 # select python version to use to check
-line-length = 100
 target-version = "py312"
 
 # Enabled rules
