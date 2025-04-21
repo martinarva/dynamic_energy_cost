@@ -433,13 +433,16 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
 
             energy_difference = current_energy - self._last_energy_reading
             cost_increment = energy_difference * price
-            self._state = (
-                self._cumulative_cost + cost_increment
-            )  # set state to the cumulative cost + increment since last energy reading
+            self._cumulative_cost += cost_increment
+            self._state = self._cumulative_cost
+            self._cumulative_energy += (
+                energy_difference  # Add to the running total of energy
+            )
             _LOGGER.info(
                 f"Energy cost incremented by {cost_increment} on top of {self._cumulative_cost}, total cost now {self._state} EUR"
             )
 
+            self._last_energy_reading = current_energy  # Always update the last reading
             self.async_write_ha_state()
 
         except Exception as e:  # noqa: BLE001
