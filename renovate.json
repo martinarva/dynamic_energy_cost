@@ -4,7 +4,6 @@
   "rebaseWhen": "conflicted",
   "commitMessage": "Update dependencies",
   "labels": ["dependencies"],
-  "automergeStrategy": "merge-commit",
   "dependencyDashboard": false,
   "prBodyTemplate": "{{{header}}}{{{table}}}{{{warnings}}}{{{notes}}}{{{changelogs}}}",
   "repositories": [
