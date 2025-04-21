@@ -2,7 +2,6 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "baseBranches": ["main"],
   "rebaseWhen": "conflicted",
-  "commitMessage": "Update dependencies",
   "labels": ["dependencies"],
   "dependencyDashboard": false,
   "prBodyTemplate": "{{{header}}}{{{table}}}{{{warnings}}}{{{notes}}}{{{changelogs}}}",
