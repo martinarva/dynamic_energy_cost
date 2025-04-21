@@ -1,12 +1,10 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "baseBranches": ["main"],
+  "automerge": false,
   "labels": ["dependencies"],
   "dependencyDashboard": false,
   "prBodyTemplate": "{{{header}}}{{{table}}}{{{warnings}}}{{{notes}}}{{{changelogs}}}",
-  "repositories": [
-    "BDVGitHub/dynamic_energy_cost"
-  ],
   "packageRules": [
     {
       "matchUpdateTypes": ["minor", "patch", "digest"]
