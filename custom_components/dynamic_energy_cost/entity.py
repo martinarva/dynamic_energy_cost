@@ -33,7 +33,7 @@ class BaseUtilitySensor(SensorEntity):
         current_time = now()
 
         if self._interval == HOURLY:
-            ## Only activate for testing purpose:
+            # Only activate for testing purpose:
             # return current_time + timedelta(seconds=30)
 
             return current_time.replace(minute=0, second=0, microsecond=0) + timedelta(
@@ -41,7 +41,7 @@ class BaseUtilitySensor(SensorEntity):
             )
 
         if self._interval == DAILY:
-            ## Only activate for testing purpose:
+            # Only activate for testing purpose:
             # return current_time + timedelta(seconds=30)
 
             return current_time.replace(

@@ -104,7 +104,11 @@ To update the integration to a newer version:
 2. Download the latest ZIP file of the repository and extract its contents.
 3. Overwrite the `dynamic_energy_cost` folder into the `custom_components` directory located typically at `/config/custom_components/` in your Home Assistant directory.
 
+## Contribute
+
+If you want, you can help with the translation via [GitLocalize](https://gitlocalize.com/repo/10085).
+
 ## Support
 
-For support, additional instructions, or to report issues, please visit the GitHub issues page associated with this repository.
-Home Assitant Community  topic: https://community.home-assistant.io/t/dynamic-energy-cost/726931
+For support, additional instructions visit Home Assitant Community  forum topic: [Dynamic Energy Cost](https://community.home-assistant.io/t/dynamic-energy-cost/726931)  
+To report issues, please visit the [GitHub issues page associated with this repository.](https://github.com/martinarva/dynamic_energy_cost/issues)

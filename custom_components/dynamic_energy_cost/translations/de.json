@@ -1,0 +1,25 @@
+{
+  "title": "Dynamische Energiekosten",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Integration für dynamische Energiekosten konfigurieren",
+        "description": "Entweder einen Sensor für Leistung (W) oder den Energieverbrauch (kWh) sowie für den Energiepreis (EUR/kWh) auswählen.",
+        "data": {
+          "integration_description": "Zusatz, welcher zur Bezeichnung der Integration hinzugefügt werden soll",
+          "electricity_price_sensor": "Entitäts-ID vom Sensor für den Strompreis (EUR/kWh)",
+          "power_sensor": "Entitäts-ID vom Sensor für die Leistung (W) - Optional wenn Energiesensor verwendet werden soll",
+          "energy_sensor": "Entitäts-ID vom Sensor für die Energie (kWh) - Optional wenn Leistungssensor verwendet werden soll"
+        }
+      }
+    },
+    "error": {
+      "invalid_entity": "Ungültige Entitäts-ID angegeben.",
+      "invalid_config": "Bitte entweder einen Sensor für die Leistung oder den Verbrauch auswählen.",
+      "missing_sensor": "Bitte mindestens einen Sensor für die Leistung oder den Verbrauch auswählen."
+    },
+    "progress": {
+      "Success": "Die Integration für dynamische Energiekosten ist jetzt eingerichtet."
+    }
+  }
+}
