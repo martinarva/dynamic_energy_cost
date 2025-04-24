@@ -10,6 +10,9 @@
   "repositories": [
     "martinarva/dynamic_energy_cost"
   ],
+  "poetry": {
+    "enabled": false
+  },
   "packageRules": [
     {
       "enabled": true,
