@@ -7,9 +7,8 @@
   "labels": ["dependencies"],
   "dependencyDashboard": false,
   "prBodyTemplate": "{{{header}}}{{{table}}}{{{warnings}}}{{{notes}}}{{{changelogs}}}",
-  "forkProcessing": "enabled",
   "repositories": [
-    "BDVGitHub/dynamic_energy_cost"
+    "martinarva/dynamic_energy_cost"
   ],
   "tool": {"poetry": "Required"},
   "packageRules": [
