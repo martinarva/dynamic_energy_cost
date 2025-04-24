@@ -1,9 +1,9 @@
-name: Renovate
+name: Renovate Bot
 on:
   # Run at odd times to avoid overlap with too many other workflows on GitHub Actions
   # note github actions cron is in UTC so this is 20:12pm every thursday.
   schedule:
-    - cron: "12 13 * * SAT"
+    - cron: "38 04 * * THU"
 jobs:
   renovate:
     runs-on: ubuntu-latest
@@ -11,9 +11,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4.2.2
       - name: Self-hosted Renovate
-        uses: renovatebot/github-action@v41.0.20
+        uses: renovatebot/github-action@v41.0.19
         with:
-          configurationFile: example/renovate-config.json
-          token: ${{ secrets.RENOVATE_TOKEN }}
+          configurationFile: renovate.json
+          token: ${{ secrets.GITHUB_TOKEN }}
         env:
           LOG_LEVEL: debug
