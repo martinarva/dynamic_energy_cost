@@ -1,16 +1,19 @@
 {
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
   "baseBranches": ["main"],
-  "rebaseWhen": "conflicted",
-  "commitMessage": "Update dependencies",
+  "prCreation": "immediate",
+  "gitAuthor": "Renovate Bot <bot@renovateapp.com>",
   "labels": ["dependencies"],
-  "automergeStrategy": "merge-commit",
   "dependencyDashboard": false,
   "prBodyTemplate": "{{{header}}}{{{table}}}{{{warnings}}}{{{notes}}}{{{changelogs}}}",
   "repositories": [
-    "BDVGitHub/dynamic_energy_cost"
+    "martinarva/dynamic_energy_cost"
   ],
+  "tool": {"poetry": "Required"},
   "packageRules": [
     {
+      "enabled": true,
       "matchUpdateTypes": ["minor", "patch", "digest"]
     }
   ]
