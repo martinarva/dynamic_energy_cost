@@ -11,6 +11,7 @@
   "repositories": [
     "BDVGitHub/dynamic_energy_cost"
   ],
+  "tool": {"poetry": "Required"},
   "packageRules": [
     {
       "enabled": true,
