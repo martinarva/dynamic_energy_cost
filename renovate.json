@@ -8,7 +8,7 @@
   "dependencyDashboard": false,
   "prBodyTemplate": "{{{header}}}{{{table}}}{{{warnings}}}{{{notes}}}{{{changelogs}}}",
   "repositories": [
-    "martinarva/dynamic_energy_cost"
+    "BDVGitHub/dynamic_energy_cost"
   ],
   "poetry": {
     "enabled": false
