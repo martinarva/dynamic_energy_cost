@@ -3,7 +3,7 @@ on:
   # Run at odd times to avoid overlap with too many other workflows on GitHub Actions
   # note github actions cron is in UTC so this is 20:12pm every thursday.
   schedule:
-    - cron: "18 17 * * THU"
+    - cron: "36 02 * * MON"
 jobs:
   renovate:
     runs-on: ubuntu-latest
@@ -14,6 +14,6 @@ jobs:
         uses: renovatebot/github-action@v41.0.19
         with:
           configurationFile: renovate.json
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RENOVATE_TOKEN }}
         env:
           LOG_LEVEL: debug
