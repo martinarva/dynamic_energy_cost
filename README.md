@@ -1,6 +1,9 @@
 # Dynamic Energy Cost Integration for Home Assistant
 
 <a href="https://gitlocalize.com/repo/10085?utm_source=badge"> <img src="https://gitlocalize.com/repo/10085/whole_project/badge.svg" /> </a>
+<a href="https://github.com/martinarva/dynamic_energy_cost/releases/latest">
+    <img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/martinarva/dynamic_energy_cost">
+  </a>
 
 This Home Assistant custom integration provides a sophisticated real-time and cumulative energy cost tracking solution, ideal for monitoring electricity expenses related to fluctuating prices and varying energy consumption levels. It's specifically crafted to handle dynamic electricity prices such as those from Nord Pool.
 
