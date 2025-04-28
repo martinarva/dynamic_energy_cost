@@ -1,8 +1,6 @@
 [tool.ruff]
 # select python version to use to check
 target-version = "py312"
-# Line lenght max
-line-length = 98
 
 [tool.ruff.lint]
 # Enabled rules
@@ -10,6 +8,15 @@ select = [
      "B",  # bugbear: security warnings
      "E",  # pycodestyle
      "F",  # pyflakes
+     "W",  # pydoclint: warnings
+     "PLE",  # pylint: error
+     "PYI",  # Flake8 pyi
      "UP",  # alert you when better syntax is available in your python version
      "RUF",  # the ruff developer's own rules
 ]
+ignore = [
+     "E501"
+] 
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
