@@ -398,7 +398,7 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
             self._last_energy_reading = current_energy  # Always update the last reading
             self.async_write_ha_state()
 
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             _LOGGER.error("Failed to update energy costs due to an error: %s", str(e))
 
     # -----------------------------------------------------------------------------------------------
@@ -442,7 +442,7 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
 
             self.async_write_ha_state()
 
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             _LOGGER.error("Failed to update energy costs due to an error: %s", str(e))
 
 
@@ -491,7 +491,7 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
                 [self._real_time_cost_sensor.entity_id],
                 self._handle_real_time_cost_update,
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             _LOGGER.error("Failed to track state change: %s", str(e))
 
     @callback

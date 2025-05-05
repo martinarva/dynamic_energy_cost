@@ -107,9 +107,7 @@ class BaseUtilitySensor(SensorEntity):
         self._state = Decimal(0) if type(self._state) is Decimal else 0
 
         if hasattr(self, "_cumulative_energy"):
-            self._cumulative_energy = (
-                0  # pylint: disable=attribute-defined-outside-init
-            )
+            self._cumulative_energy = 0  # pylint: disable=attribute-defined-outside-init
         if hasattr(self, "_cumulative_cost"):
             self._cumulative_cost = 0  # pylint: disable=attribute-defined-outside-init
 
