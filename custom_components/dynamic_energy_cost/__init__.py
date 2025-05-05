@@ -25,7 +25,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             entry, PLATFORMS
         )
         _LOGGER.debug("Forwarding to sensor setup was successful: %s", setup_result)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         _LOGGER.error("Failed to set up sensor platform, error: %s", str(e))
         return False
 
