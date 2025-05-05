@@ -112,9 +112,7 @@ class BaseUtilitySensor(SensorEntity):
             self._cumulative_cost = 0  # pylint: disable=attribute-defined-outside-init
 
         if hasattr(self, "_last_energy_reading"):
-            self._last_energy_reading = (
-                None  # pylint: disable=attribute-defined-outside-init
-            )
+            self._last_energy_reading = None  # pylint: disable=attribute-defined-outside-init
         self._last_update = now()
         self.async_write_ha_state()
         _LOGGER.debug("Meter reset for %s", self._name)
