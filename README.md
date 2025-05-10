@@ -1,5 +1,6 @@
 <div align="center">
   <br>
+  <img src="docs/images/DynamicEnergyCost_Icon100.png">
   <h1>Dynamic Energy Cost</h1>
   <strong>HACS integration for Home Assistant</strong>
 </div>
