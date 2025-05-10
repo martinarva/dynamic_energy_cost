@@ -1,12 +1,15 @@
-# Dynamic Energy Cost Integration for Home Assistant
-
+<div align="center">
+  <br>
+  <h1>Dynamic Energy Cost</h1>
+  <strong>HACS integration for Home Assistant</strong>
+</div>
 <a href="https://gitlocalize.com/repo/10085?utm_source=badge"> <img src="https://gitlocalize.com/repo/10085/whole_project/badge.svg" /> </a>
 <a href="https://github.com/martinarva/dynamic_energy_cost/releases/latest">
     <img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/martinarva/dynamic_energy_cost">
   </a>
 <p align="center">
   <a href="https://www.python.org/">
-    <img src="https://skills.syvixor.com/api/icons?i=python" />
+    <img src="https://skills.syvixor.com/api/icons?i=github,homeassistant,python" />
   </a>
 </p>
 
