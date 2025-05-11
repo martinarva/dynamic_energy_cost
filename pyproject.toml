@@ -5,7 +5,7 @@ target-version = "py312"
 [tool.ruff.lint]
 # Enabled rules
 select = [
-     "ARG",  #flake8: unused arguments 
+     # "ARG",  #flake8: unused arguments 
      "B",  # bugbear: security warnings
      "DTZ",  #flake8: datetimez
      "E",  # pycodestyle
