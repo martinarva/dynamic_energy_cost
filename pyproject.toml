@@ -5,12 +5,14 @@ target-version = "py312"
 [tool.ruff.lint]
 # Enabled rules
 select = [
+     "ARG",  #flake8: unused arguments 
      "B",  # bugbear: security warnings
+     "DTZ",  #flake8: datetimez
      "E",  # pycodestyle
      "F",  # pyflakes
      "W",  # pydoclint: warnings
      "PLE",  # pylint: error
-     "PYI",  # Flake8 pyi
+     "PYI",  # Flake8: pyi
      "UP",  # alert you when better syntax is available in your python version
      "RUF",  # the ruff developer's own rules
 ]
