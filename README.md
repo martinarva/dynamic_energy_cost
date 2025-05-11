@@ -9,7 +9,7 @@
     <img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/martinarva/dynamic_energy_cost">
   </a>
 <p align="center">
-    <img src="https://skills.syvixor.com/api/icons?i=github,homeassistant,python" />
+    <img src="https://skills.syvixor.com/api/icons?i=github,homeassistant,hacs,python,gitlocalize" />
   </a>
 </p>
 
