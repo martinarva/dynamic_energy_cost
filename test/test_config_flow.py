@@ -5,9 +5,6 @@ from unittest.mock import patch
 from homeassistant import config_entries, setup
 from custom_components.dynamic_energy_cost.const import DOMAIN
 
-# Enable debug logging for tests
-logging.basicConfig(level=logging.DEBUG)
-_LOGGER = logging.getLogger(__name__)
 
 async def test_form(hass):
     """Test we get the form."""
