@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 from homeassistant import config_entries, setup
-from custom_components.simple_integration.const import DOMAIN
+from custom_components.dynamic_energy_cost.const import DOMAIN
 
 # Enable debug logging for tests
 logging.basicConfig(level=logging.DEBUG)
