@@ -12,11 +12,14 @@ async def test_form(hass):
     # Ensure the component is set up correctly
     await setup.async_setup_component(hass, "persistent_notification", {})
 
-    with patch(
-        "custom_components.dynamic_energy_cost.async_setup", return_value=True
-    ) as mock_setup, patch(
-        "custom_components.dynamic_energy_cost.async_setup_entry", return_value=True
-    ) as mock_setup_entry:
+    with (
+        patch(
+            "custom_components.dynamic_energy_cost.async_setup", return_value=True
+        ) as mock_setup,
+        patch(
+            "custom_components.dynamic_energy_cost.async_setup_entry", return_value=True
+        ) as mock_setup_entry,
+    ):
         # Initialize the flow
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
