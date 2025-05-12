@@ -2,7 +2,7 @@
 
 from homeassistant.setup import async_setup_component
 
-from custom_components.remeha_modbus.const import DOMAIN
+from custom_components.dynamic_energy_cost.const import DOMAIN
 
 
 async def test_async_setup(hass):
