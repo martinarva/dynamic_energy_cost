@@ -1,7 +1,7 @@
 """Tests for the config flow."""
 
-from unittest.mock import patch
 import pytest
+from unittest.mock import patch
 from homeassistant import config_entries, setup
 from custom_components.dynamic_energy_cost.const import DOMAIN
 
@@ -12,14 +12,11 @@ async def test_form(hass):
     # Ensure the component is set up correctly
     await setup.async_setup_component(hass, "persistent_notification", {})
 
-    with (
-        patch(
-            "custom_components.dynamic_energy_cost.async_setup", return_value=True
-        ) as mock_setup,
-        patch(
-            "custom_components.dynamic_energy_cost.async_setup_entry", return_value=True
-        ) as mock_setup_entry,
-    ):
+    with patch(
+        "custom_components.dynamic_energy_cost.async_setup", return_value=True
+    ) as mock_setup, patch(
+        "custom_components.dynamic_energy_cost.async_setup_entry", return_value=True
+    ) as mock_setup_entry:
         # Initialize the flow
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
@@ -33,11 +30,9 @@ async def test_form(hass):
         )
         assert result2["type"] == "create_entry"
         assert result2["title"] == "new_simple_config"
-        assert result2["data"] == {
-            "name": "new_simple_config",
-        }
+        assert result2["data"] == {"name": "new_simple_config"}
 
     # Verify that setup entry functions were called
     await hass.async_block_till_done()
-    assert len(mock_setup.mock_calls) == 1
-    assert len(mock_setup_entry.mock_calls) == 1
+    assert mock_setup.called
+    assert mock_setup_entry.called
