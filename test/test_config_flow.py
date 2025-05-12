@@ -3,14 +3,15 @@
 from unittest import mock
 from unittest.mock import AsyncMock, patch
 
-from gidgethub import BadRequest
-from homeassistant.const import CONF_ACCESS_TOKEN, CONF_NAME, CONF_PATH
 import pytest
+import logging
+from homeassistant import config_entries, data_entry_flow
+from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.github_custom import config_flow
-from custom_components.github_custom.const import CONF_REPOS, DOMAIN
-
+# Enable debug logging for tests
+logging.basicConfig(level=logging.DEBUG)
+_LOGGER = logging.getLogger(__name__)
 
 @pytest.mark.asyncio
 @patch("custom_components.github_custom.config_flow.GitHubAPI")
