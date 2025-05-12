@@ -1,3 +1,4 @@
 pytest>=8.3
+pytest-cov
 flask>=3.0
 pytest-homeassistant-custom-component
