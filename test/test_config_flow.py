@@ -3,6 +3,7 @@
 import pytest
 from unittest.mock import patch
 from homeassistant import config_entries, setup
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.dynamic_energy_cost.const import DOMAIN
 
 
