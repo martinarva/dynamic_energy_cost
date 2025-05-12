@@ -15,17 +15,18 @@ async def test_form(hass):
     assert result["type"] == "form"
     assert result["errors"] == {}
 
-    with patch(
-        "custom_components.simple_integration.async_setup", return_value=True
-    ) as mock_setup, patch(
-        "custom_components.simple_integration.async_setup_entry",
-        return_value=True,
-    ) as mock_setup_entry:
+    with (
+        patch(
+            "custom_components.simple_integration.async_setup", return_value=True
+        ) as mock_setup,
+        patch(
+            "custom_components.simple_integration.async_setup_entry",
+            return_value=True,
+        ) as mock_setup_entry,
+    ):
         result2 = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            {
-                "name": "new_simple_config"
-            },
+            {"name": "new_simple_config"},
         )
 
     assert result2["type"] == "create_entry"
