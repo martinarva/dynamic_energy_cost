@@ -28,34 +28,6 @@ Calculating energy cost from an energy (kWh) sensor is the more precise and reco
 
 **Note:** It is important that only one type of sensor (either power or energy) is configured for this integration. Both cannot be used simultaneously.
 
-## Resetting the cost sensors
-
-Dynamic Energy Cost provides a service `dynamic_energy_cost.reset_cost` which you can call to reset energy sensors to 0. You can call this service from the GUI (Developer tools -> Services) or use this in automations.
-
-```yaml
-service: dynamic_energy_cost.reset_cost
-target:
-  entity_id: sensor.your_sensor_entity_id
-```
-
-## Calibrating the cost sensors
-
-Dynamic Energy Cost provides a service `dynamic_energy_cost.calibrate` which you can call to change the value of a given sensor. You can call this service from the GUI (Developer tools -> Actions) or use this in automations.
-
-```yaml
-action: dynamic_energy_cost.calibrate
-target:
-  entity_id: sensor.your_sensor_entity_id
-data:
-  value: "100"
-```
-
-## Prerequisites
-
-- **Electricity Price Sensor:** A sensor that provides the current electricity price in EUR/kWh.
-- **Power Usage Sensor (optional):** A sensor that monitors power usage in Watts (W).
-- **Energy Usage Sensor (optional):** A sensor that monitors energy consumption in kilowatt-hours (kWh).
-
 ## Installation
 
 ### Install using HACS (recommended)
@@ -116,6 +88,34 @@ To update the integration to a newer version:
 1. Access the GitHub repository for this integration.
 2. Download the latest ZIP file of the repository and extract its contents.
 3. Overwrite the `dynamic_energy_cost` folder into the `custom_components` directory located typically at `/config/custom_components/` in your Home Assistant directory.
+
+## Resetting the cost sensors
+
+Dynamic Energy Cost provides a service `dynamic_energy_cost.reset_cost` which you can call to reset energy sensors to 0. You can call this service from the GUI (Developer tools -> Services) or use this in automations.
+
+```yaml
+service: dynamic_energy_cost.reset_cost
+target:
+  entity_id: sensor.your_sensor_entity_id
+```
+
+## Calibrating the cost sensors
+
+Dynamic Energy Cost provides a service `dynamic_energy_cost.calibrate` which you can call to change the value of a given sensor. You can call this service from the GUI (Developer tools -> Actions) or use this in automations.
+
+```yaml
+action: dynamic_energy_cost.calibrate
+target:
+  entity_id: sensor.your_sensor_entity_id
+data:
+  value: "100"
+```
+
+## Prerequisites
+
+- **Electricity Price Sensor:** A sensor that provides the current electricity price in EUR/kWh.
+- **Power Usage Sensor (optional):** A sensor that monitors power usage in Watts (W).
+- **Energy Usage Sensor (optional):** A sensor that monitors energy consumption in kilowatt-hours (kWh).
 
 ## Contribute
 
