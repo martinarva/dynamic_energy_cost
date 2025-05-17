@@ -1,0 +1,4 @@
+site_name: Dynamic Energy Cost documentation
+docs_dir: source
+repo_url: https://github.com/martinarva/dynamic_energy_cost
+edit_uri: blob/master/docs/source/

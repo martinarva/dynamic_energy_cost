@@ -1,0 +1,79 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Brech\\OneDrive\\Documents\\15 Computer\\Visual Studio\\GitHub\\dynamic_energy_cost\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Brech\\OneDrive\\Documents\\15 Computer\\Visual Studio\\GitHub\\dynamic_energy_cost\\docs\\source\\index.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:docs\\source\\index.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Brech\\OneDrive\\Documents\\15 Computer\\Visual Studio\\GitHub\\dynamic_energy_cost\\docs\\source\\CNAME||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:docs\\source\\CNAME||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Brech\\OneDrive\\Documents\\15 Computer\\Visual Studio\\GitHub\\dynamic_energy_cost\\docs\\mkdocs.yml||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:docs\\mkdocs.yml||{8B382828-6202-11D1-8870-0000F87579D2}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{75188d03-9892-4ae2-abf1-207126247ce5}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "index.md",
+              "DocumentMoniker": "C:\\Users\\Brech\\OneDrive\\Documents\\15 Computer\\Visual Studio\\GitHub\\dynamic_energy_cost\\docs\\source\\index.md",
+              "RelativeDocumentMoniker": "docs\\source\\index.md",
+              "ToolTip": "C:\\Users\\Brech\\OneDrive\\Documents\\15 Computer\\Visual Studio\\GitHub\\dynamic_energy_cost\\docs\\source\\index.md",
+              "RelativeToolTip": "docs\\source\\index.md",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAiAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2025-05-17T12:38:24.437Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "CNAME",
+              "DocumentMoniker": "C:\\Users\\Brech\\OneDrive\\Documents\\15 Computer\\Visual Studio\\GitHub\\dynamic_energy_cost\\docs\\source\\CNAME",
+              "RelativeDocumentMoniker": "docs\\source\\CNAME",
+              "ToolTip": "C:\\Users\\Brech\\OneDrive\\Documents\\15 Computer\\Visual Studio\\GitHub\\dynamic_energy_cost\\docs\\source\\CNAME",
+              "RelativeToolTip": "docs\\source\\CNAME",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-05-17T12:37:15.429Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "mkdocs.yml",
+              "DocumentMoniker": "C:\\Users\\Brech\\OneDrive\\Documents\\15 Computer\\Visual Studio\\GitHub\\dynamic_energy_cost\\docs\\mkdocs.yml",
+              "RelativeDocumentMoniker": "docs\\mkdocs.yml",
+              "ToolTip": "C:\\Users\\Brech\\OneDrive\\Documents\\15 Computer\\Visual Studio\\GitHub\\dynamic_energy_cost\\docs\\mkdocs.yml",
+              "RelativeToolTip": "docs\\mkdocs.yml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAA7AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003775|",
+              "WhenOpened": "2025-05-17T12:34:39.44Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
