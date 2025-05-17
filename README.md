@@ -78,6 +78,7 @@ When setting up the integration, you will be prompted to provide the following:
 
 - Input the entity IDs
   - **Electricity Price Sensor:** Sensor that provides the current electricity price.
+                                  (For example Nordpool, Ember, ... fixed price, day/night)
   - **Power/Energy Usage Sensor:** Ensure the sensor measures in Watts (W) for power or kilowatt-hours (kWh) for energy.
 - Submit to complete the integration setup.
 
