@@ -116,6 +116,7 @@ data:
 - **Electricity Price Sensor:** A sensor that provides the current electricity price in EUR/kWh.
 - **Power Usage Sensor (optional):** A sensor that monitors power usage in Watts (W).
 - **Energy Usage Sensor (optional):** A sensor that monitors energy consumption in kilowatt-hours (kWh).
+- **Virtual Energy Usage Sensor (optional):** Use a virtual energy sensor such as e.g. [Powercalc](https://docs.powercalc.nl/).
 
 ## Contribute
 
