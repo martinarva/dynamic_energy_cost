@@ -16,7 +16,7 @@
   </a>
 </p>
 
-This Home Assistant custom integration provides a sophisticated real-time and cumulative energy cost tracking solution, ideal for monitoring electricity expenses related to fluctuating prices and varying energy consumption levels. It's specifically crafted to handle dynamic electricity prices such as those from Nord Pool.
+This Home Assistant custom integration provides a sophisticated real-time and cumulative energy cost tracking solution, ideal for monitoring electricity expenses related to fluctuating prices and varying energy consumption levels. It's specifically crafted to handle dynamic electricity prices such as those from [Nord Pool](https://www.home-assistant.io/integrations/nordpool/), [Amber](https://www.home-assistant.io/integrations/amberelectric/), ...
 
 ## Features
 
