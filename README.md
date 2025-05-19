@@ -88,9 +88,10 @@ When setting up the integration, you will be prompted to provide the following:
 
 To update the integration to a newer version:
 
-1. Access the GitHub repository for this integration.
-2. Download the latest ZIP file of the repository and extract its contents.
+1. Download the [latest ZIP file of Dynamic Energy Cost](https://github.com/martinarva/dynamic_energy_cost/archive/refs/heads/main.zip) and extract its contents.
+2. Go to your'e Home Assistant instance.
 3. Overwrite the `dynamic_energy_cost` folder into the `custom_components` directory located typically at `/config/custom_components/` in your Home Assistant directory.
+4. reboot Home Assistant.
 
 ## Resetting the cost sensors
 
