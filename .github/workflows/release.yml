@@ -1,0 +1,19 @@
+# This workflow updates the manifest.yml
+
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  update_manifest_file:
+    name: update manifest file
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set version number
+        run: |
+          python3 ${{ github.workspace }}/custom_components/dynamic_energy_cost/manifest.json --version ${{ github.ref_name }}
