@@ -86,6 +86,11 @@ When setting up the integration, you will be prompted to provide the following:
 
 ## Updating
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?repository=dynamic_energy_cost&owner=martinarva&category=Integration)
+
+<details>
+<summary><b><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="m13.75 10.19l.63.13l4.17 2.08c.7.23 1.16.92 1.1 1.66v.26l-.9 6.12c-.06.43-.25.83-.6 1.11c-.31.3-.72.45-1.15.45h-6.88c-.49 0-.94-.18-1.27-.53L2.86 15.5l.9-1c.24-.25.62-.39.98-.37h.29L9 15V4.5a2 2 0 0 1 2-2a2 2 0 0 1 2 2v5.69z"></path></svg> Update manually </b></summary>
+
 To update the integration to a newer version:
 
 1. Download the [latest ZIP file of Dynamic Energy Cost](https://github.com/martinarva/dynamic_energy_cost/archive/refs/heads/main.zip) and extract its contents.
@@ -95,6 +100,8 @@ To update the integration to a newer version:
 4. Overwrite the `dynamic_energy_cost` folder into the `custom_components` directory located typically at `/config/custom_components/`.
 5. Reboot Home Assistant.  
 <a href="https://my.home-assistant.io/redirect/developer_call_service/?service=homeassistant%2Frestart" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/developer_call_service.svg" alt="Open your Home Assistant instance and show your service developer tools with a specific action selected." /></a>
+
+</details>
 
 ## Resetting the cost sensors
 
