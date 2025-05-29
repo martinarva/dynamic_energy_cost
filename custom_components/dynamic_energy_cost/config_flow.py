@@ -13,7 +13,7 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-INIT_SCHEMA= vol.Schema(
+schema = vol.Schema(
             {
                 vol.Optional("integration_description"): selector.TextSelector(),
                 vol.Required("electricity_price_sensor"): selector.EntitySelector(
@@ -32,7 +32,7 @@ INIT_SCHEMA= vol.Schema(
             }
         )
 
-CHANGE_INIT_SCHEMA = vol.Schema(
+schema = vol.Schema(
             {
                 vol.Required(
                     "electricity_price_sensor",
@@ -116,7 +116,7 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=INIT_SCHEMA,
+            data_schema=schema,
             errors=errors,
             description_placeholders={
                 "integration_description": "Name to append the integration title",
@@ -156,6 +156,6 @@ class DynamicEnergyCostOptionsFlow(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=CHANGE_INIT_SCHEMA,
+            data_schema=schema,
             errors=errors,
         )
