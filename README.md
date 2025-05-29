@@ -45,27 +45,24 @@ After installation, please restart Home Assistant. To add Dynamic Energy Cost to
 [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=dynamic_energy_cost)
 
 <details>
-<summary><b><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="m13.75 10.19l.63.13l4.17 2.08c.7.23 1.16.92 1.1 1.66v.26l-.9 6.12c-.06.43-.25.83-.6 1.11c-.31.3-.72.45-1.15.45h-6.88c-.49 0-.94-.18-1.27-.53L2.86 15.5l.9-1c.24-.25.62-.39.98-.37h.29L9 15V4.5a2 2 0 0 1 2-2a2 2 0 0 1 2 2v5.69z"></path></svg> Manual configuration steps</b></summary>
+<summary><b> Manual configuration steps</b></summary>
 
 ### Semi-Manual Installation with HACS
 
-1. Go HACS integrations section.
+1. In Home Assistant go to HACS integrations section.
 2. Click on the 3 dots in the top right corner.
-3. Select "Custom repositories"
+3. Select "Custom repositories".
 4. Add the URL (https://github.com/martinarva/dynamic_energy_cost) to the repository.
 5. Select the integration category.
 6. Click the "ADD" button.
-7. Now you are able to download the integration
+7. Now you are able to download the integration.
 
 ### Manual Installation
 
-1. Access the GitHub repository for this integration.
-2. Download the ZIP file of the repository and extract its contents.
-3. Copy the `dynamic_energy_cost` folder into the `custom_components` directory located typically at `/config/custom_components/` in your Home Assistant directory.
-
-### Restart Home Assistant
-
-- Restart Home Assistant to recognize the newly added custom component.
+1. Download the [latest ZIP file of Dynamic Energy Cost](https://github.com/martinarva/dynamic_energy_cost/archive/refs/heads/main.zip) and extract its contents.
+2. Copy the `dynamic_energy_cost` folder into the `custom_components` directory located typically at `/config/custom_components/` in your Home Assistant directory.
+3. Restart Home Assistant to recognize the newly added custom component.  
+<a href="https://my.home-assistant.io/redirect/developer_call_service/?service=homeassistant%2Erestart" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/developer_call_service.svg" alt="Open your Home Assistant instance and show your service developer tools with a specific action selected." /></a>
 
 ### Add Integration
 
@@ -89,7 +86,7 @@ When setting up the integration, you will be prompted to provide the following:
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?repository=dynamic_energy_cost&owner=martinarva&category=Integration)
 
 <details>
-<summary><b><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="m13.75 10.19l.63.13l4.17 2.08c.7.23 1.16.92 1.1 1.66v.26l-.9 6.12c-.06.43-.25.83-.6 1.11c-.31.3-.72.45-1.15.45h-6.88c-.49 0-.94-.18-1.27-.53L2.86 15.5l.9-1c.24-.25.62-.39.98-.37h.29L9 15V4.5a2 2 0 0 1 2-2a2 2 0 0 1 2 2v5.69z"></path></svg> Update manually </b></summary>
+<summary><b> Update manually </b></summary>
 
 To update the integration to a newer version:
 
