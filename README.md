@@ -99,7 +99,7 @@ To update the integration to a newer version:
 <a href="https://my.home-assistant.io/redirect/backup/" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/backup.svg" alt="Open your Home Assistant instance and show an overview of your backups." /></a>
 4. Overwrite the `dynamic_energy_cost` folder into the `custom_components` directory located typically at `/config/custom_components/`.
 5. Reboot Home Assistant.  
-<a href="https://my.home-assistant.io/redirect/developer_call_service/?service=homeassistant%2Frestart" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/developer_call_service.svg" alt="Open your Home Assistant instance and show your service developer tools with a specific action selected." /></a>
+<a href="https://my.home-assistant.io/redirect/developer_call_service/?service=homeassistant%2Erestart" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/developer_call_service.svg" alt="Open your Home Assistant instance and show your service developer tools with a specific action selected." /></a>
 
 </details>
 
