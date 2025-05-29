@@ -93,7 +93,7 @@ When setting up the integration, you will be prompted to provide the following:
 
 To update the integration to a newer version:
 
-1. Download the [latest ZIP file of Dynamic Energy Cost](https://github.com/martinarva/dynamic_energy_cost/archive/refs/heads/main.zip) and extract its contents.
+1. Download the [latest release of Dynamic Energy Cost](https://github.com/martinarva/dynamic_energy_cost/releases/latest) and extract its contents. 
 2. Go to your'e Home Assistant instance.
 3. Make sure to make a back up first.  
 <a href="https://my.home-assistant.io/redirect/backup/" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/backup.svg" alt="Open your Home Assistant instance and show an overview of your backups." /></a>
@@ -131,6 +131,16 @@ data:
 - **Power Usage Sensor (optional):** A sensor that monitors power usage in Watts (W).
 - **Energy Usage Sensor (optional):** A sensor that monitors energy consumption in kilowatt-hours (kWh).
 - **Virtual Energy Usage Sensor (optional):** Use a virtual energy sensor such as e.g. [Powercalc](https://docs.powercalc.nl/).
+
+## Beta testing
+
+1. Download the [latest ZIP file of Dynamic Energy Cost](https://github.com/martinarva/dynamic_energy_cost/archive/refs/heads/main.zip) and extract its contents.
+2. Go to your'e Home Assistant instance.
+3. Make sure to make a back up first.  
+<a href="https://my.home-assistant.io/redirect/backup/" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/backup.svg" alt="Open your Home Assistant instance and show an overview of your backups." /></a>
+4. Overwrite the `dynamic_energy_cost` folder into the `custom_components` directory located typically at `/config/custom_components/`.
+5. Reboot Home Assistant.  
+<a href="https://my.home-assistant.io/redirect/developer_call_service/?service=homeassistant%2Frestart" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/developer_call_service.svg" alt="Open your Home Assistant instance and show your service developer tools with a specific action selected." /></a>
 
 ## Contribute
 
