@@ -11,24 +11,27 @@ jobs:
   update_manifest_file:
     name: update manifest file
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     steps:
-      - name: Check out repository
+      - name: ⤵️ Check out code from GitHub
         uses: actions/checkout@v4
-      - name: Set version number
+        
+      - name: 🔢 Adjust version number
         shell: "bash"
         run: |
           yq -i -o json '.version="${{ github.event.release.tag_name }}"' \
             "${{ github.workspace }}/custom_components/dynamic_energy_cost/manifest.json"
             
-      - name: "ZIP the integration directory"
+      - name: 📦 Created zipped release package
         shell: "bash"
         run: |
           cd "${{ github.workspace }}/custom_components/dynamic_energy_cost"
           zip dynamic_energy_cost.zip -r ./
 
-      - name: "Upload the ZIP file to the release"
+      - name: ⬆️ Upload zip to release
         uses: softprops/action-gh-release@v2.2.2
         with:
           files: ${{ github.workspace }}/custom_components/dynamic_energy_cost/dynamic_energy_cost.zip
-          token: ${{ secrets.GITHUB_TOKEN }}
         
