@@ -30,4 +30,5 @@ jobs:
         uses: softprops/action-gh-release@v2.2.2
         with:
           files: ${{ github.workspace }}/custom_components/dynamic_energy_cost/dynamic_energy_cost.zip
+          token: ${{ secrets.GITHUB_TOKEN }}
         
