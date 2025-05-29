@@ -2,7 +2,7 @@
   "domain": "dynamic_energy_cost",
   "name": "Dynamic Energy Cost",
   "codeowners": ["@martinarva"],
-  "config_flow": true,
+  "config_flow": True,
   "dependencies": ["sensor"],
   "documentation": "https://github.com/martinarva/dynamic_energy_cost/",
   "iot_class": "local_polling",
