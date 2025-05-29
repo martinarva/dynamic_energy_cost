@@ -13,51 +13,6 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-schema = vol.Schema(
-            {
-                vol.Optional("integration_description"): selector.TextSelector(),
-                vol.Required("electricity_price_sensor"): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor", multiple=False)
-                ),
-                vol.Optional("power_sensor"): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain="sensor", multiple=False, device_class="power"
-                    )
-                ),
-                vol.Optional("energy_sensor"): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain="sensor", multiple=False, device_class="energy"
-                    )
-                ),
-            }
-        )
-
-schema = vol.Schema(
-            {
-                vol.Required(
-                    "electricity_price_sensor",
-                    default=current_values.get("electricity_price_sensor"),
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor", multiple=False)
-                ),
-                vol.Optional(
-                    "power_sensor", default=current_values.get("power_sensor")
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain="sensor", multiple=False, device_class="power"
-                    )
-                ),
-                vol.Optional(
-                    "energy_sensor", default=current_values.get("energy_sensor")
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain="sensor", multiple=False, device_class="energy"
-                    )
-                ),
-            }
-        )
-
-
 
 class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Dynamic Energy Cost."""
@@ -112,7 +67,24 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.error("Validation error: %s", err)
                 errors["base"] = "invalid_entity"
 
-        
+        schema = vol.Schema(
+            {
+                vol.Optional("integration_description"): selector.TextSelector(),
+                vol.Required("electricity_price_sensor"): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor", multiple=False)
+                ),
+                vol.Optional("power_sensor"): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain="sensor", multiple=False, device_class="power"
+                    )
+                ),
+                vol.Optional("energy_sensor"): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain="sensor", multiple=False, device_class="energy"
+                    )
+                ),
+            }
+        )
 
         return self.async_show_form(
             step_id="user",
@@ -152,7 +124,30 @@ class DynamicEnergyCostOptionsFlow(config_entries.OptionsFlow):
         # Get the current values from the config entry
         current_values = self.config_entry.data
 
-        
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    "electricity_price_sensor",
+                    default=current_values.get("electricity_price_sensor"),
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain="sensor", multiple=False)
+                ),
+                vol.Optional(
+                    "power_sensor", default=current_values.get("power_sensor")
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain="sensor", multiple=False, device_class="power"
+                    )
+                ),
+                vol.Optional(
+                    "energy_sensor", default=current_values.get("energy_sensor")
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain="sensor", multiple=False, device_class="energy"
+                    )
+                ),
+            }
+        )
 
         return self.async_show_form(
             step_id="user",
