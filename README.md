@@ -131,7 +131,7 @@ data:
 
 ## Beta testing
 
-1. Download the [latest ZIP file of Dynamic Energy Cost](https://github.com/martinarva/dynamic_energy_cost/archive/refs/heads/main.zip) and extract its contents.
+1. Download the [latest develop ZIP file of Dynamic Energy Cost](https://github.com/martinarva/dynamic_energy_cost/archive/refs/heads/Develop.zip) and extract its contents.
 2. Go to your'e Home Assistant instance.
 3. Make sure to make a back up first.  
 <a href="https://my.home-assistant.io/redirect/backup/" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/backup.svg" alt="Open your Home Assistant instance and show an overview of your backups." /></a>
