@@ -14,7 +14,7 @@
       }
     },
     "error": {
-      "invalid_entity": "Invalid entity ID provided."
+      "invalid_entity": "Invalid entity ID provided.",
       "invalid_config": "Please choose either a power sensor or an energy sensor.",
       "missing_sensor": "Enter at least a power sensor or an energy sensor."
     },
