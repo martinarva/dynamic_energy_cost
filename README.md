@@ -59,7 +59,7 @@ After installation, please restart Home Assistant. To add Dynamic Energy Cost to
 
 ### Manual Installation
 
-1. Download the [latest ZIP file of Dynamic Energy Cost](https://github.com/martinarva/dynamic_energy_cost/archive/refs/heads/main.zip) and extract its contents.
+1. Download the [latest release of Dynamic Energy Cost](https://github.com/martinarva/dynamic_energy_cost/releases/latest) and extract its contents.
 2. Copy the `dynamic_energy_cost` folder into the `custom_components` directory located typically at `/config/custom_components/` in your Home Assistant directory.
 3. Restart Home Assistant to recognize the newly added custom component.  
 <a href="https://my.home-assistant.io/redirect/developer_call_service/?service=homeassistant%2Erestart" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/developer_call_service.svg" alt="Open your Home Assistant instance and show your service developer tools with a specific action selected." /></a>
