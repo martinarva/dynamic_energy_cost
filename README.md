@@ -5,11 +5,14 @@
   <strong>HACS integration for Home Assistant</strong>
 </div>
 <a href="https://gitlocalize.com/repo/10085?utm_source=badge"> <img src="https://gitlocalize.com/repo/10085/whole_project/badge.svg" /> </a>
+<a style="text-decoration:none" href="https://github.com/martinarva/dynamic_energy_cost/blob/main/LICENSE">
+    <img alt="GitHub" src="https://img.shields.io/github/license/martinarva/dynamic_energy_cost">
+  </a>
 <a href="https://github.com/martinarva/dynamic_energy_cost/releases/latest">
     <img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/martinarva/dynamic_energy_cost">
   </a>
-<a style="text-decoration:none" href="https://github.com/martinarva/dynamic_energy_cost/blob/main/LICENSE">
-    <img alt="GitHub" src="https://img.shields.io/github/license/martinarva/dynamic_energy_cost">
+<a style="text-decoration:none" href="https://github.com/martinarva/dynamic_energy_cost/archive/refs/heads/Develop.zip">
+  <img alt="Static Badge" src="https://img.shields.io/badge/develop-beta-blue">
   </a>
 <p align="center">
     <img src="https://skills.syvixor.com/api/icons?i=github,homeassistant,hacs,python,gitlocalize" />
