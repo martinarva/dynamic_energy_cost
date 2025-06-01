@@ -28,7 +28,7 @@ If applicable, add screenshots and/or screen recording to help explain your prob
  - [ ] Home Assistant Supervised
  - [ ] Home Assistant Core
 
-**Dynamic Energy Cost Version**
+**Dynamic Energy Cost Version**  
  Version you use:
  - Version [e.g. V0.8.0]
 
