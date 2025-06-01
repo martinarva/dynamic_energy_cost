@@ -69,7 +69,7 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         schema = vol.Schema(
             {
-                vol.Optional("integration_description"): selector.TextSelector(),
+                vol.Required("integration_description"): selector.TextSelector(),
                 vol.Required("electricity_price_sensor"): selector.EntitySelector(
                     selector.EntitySelectorConfig(domain="sensor", multiple=False)
                 ),
