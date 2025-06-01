@@ -6,8 +6,10 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.exceptions import ConfigValidationError
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import selector
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.schema_config_entry_flow import SchemaFlowError
 
 from .const import DOMAIN
 
@@ -40,14 +42,14 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "energy_sensor"
                 ):
                     _LOGGER.warning("Neither power nor energy sensor was provided")
-                    raise ConfigValidationError(
-                        "Please enter either a power sensor or an energy sensor, not both."
-                    )
+                    raise SchemaFlowError(
+                        error.get_config_flow_translate_key() or "invalid_config"
+                    ) from error
                 if user_input.get("power_sensor") and user_input.get("energy_sensor"):
                     _LOGGER.warning("Both power and energy sensors were provided")
-                    raise ConfigValidationError(
-                        "Please enter only one type of sensor (power or energy)."
-                    )
+                    raise SchemaFlowError(
+                        error.get_config_flow_translate_key() or "missing_sensor"
+                    ) from error
 
                 # Create the config dictionary
                 config = {
