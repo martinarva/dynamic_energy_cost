@@ -4,6 +4,7 @@ on:
   # note github actions cron is in UTC so this is 20:12pm every thursday.
   schedule:
     - cron: "36 16 * * MON"
+
 jobs:
   renovate:
     runs-on: ubuntu-latest
