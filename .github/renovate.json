@@ -16,7 +16,7 @@
   },
   "pip_requirements": {
     "fileMatch": ["(^|/)requirements(-.*)?.txt$"]
-  }
+  },
   "packageRules": [
     {
       "enabled": true,
