@@ -3,7 +3,7 @@ on:
   # Run at odd times to avoid overlap with too many other workflows on GitHub Actions
   # note github actions cron is in UTC so this is 20:12pm every thursday.
   schedule:
-    - cron: "10 16 * * MON"
+    - cron: "36 16 * * MON"
 jobs:
   renovate:
     runs-on: ubuntu-latest
