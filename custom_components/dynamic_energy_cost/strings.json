@@ -18,6 +18,9 @@
       "invalid_config": "Please choose either a power sensor or an energy sensor.",
       "missing_sensor": "Enter at least a power sensor or an energy sensor."
     },
+    "abort": {
+      "already_configured": "The sensor is already configured."
+    },
     "progress": {
       "Success": "Your Dynamic Energy Cost Integration is now configured."
     }      
