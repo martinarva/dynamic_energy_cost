@@ -8,14 +8,11 @@
   "dependencyDashboard": false,
   "commitMessagePrefix": "⬆️",
   "prBodyTemplate": "{{{header}}}{{{table}}}{{{warnings}}}{{{notes}}}{{{changelogs}}}",
-  "repositories": [
-    "BDVGitHub/dynamic_energy_cost"
-  ],
   "poetry": {
     "enabled": false
   },
   "pip_requirements": {
-    "fileMatch": ["(^|/)requirements(-.*)?.txt$"]
+    "fileMatch": ["requirements_test.txt"]
   },
   "packageRules": [
     {
