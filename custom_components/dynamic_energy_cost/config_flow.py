@@ -3,6 +3,9 @@
 import logging
 
 from homeassistant import config_entries
+from homeassistant.components.input_number import DOMAIN as INPUT_NUMBER_DOMAIN
+from homeassistant.components.number import DOMAIN as NUMBER_DOMAIN
+from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.exceptions import ConfigValidationError
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.data_entry_flow import FlowResult
@@ -94,16 +97,19 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             {
                 vol.Required("integration_description"): selector.TextSelector(),
                 vol.Required("electricity_price_sensor"): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor", multiple=False)
+                    selector.EntitySelectorConfig(
+                        domain=[SENSOR_DOMAIN, NUMBER_DOMAIN, INPUT_NUMBER_DOMAIN],
+                        multiple=False,
+                    )
                 ),
                 vol.Optional("power_sensor"): selector.EntitySelector(
                     selector.EntitySelectorConfig(
-                        domain="sensor", multiple=False, device_class="power"
+                        domain=[SENSOR_DOMAIN], multiple=False, device_class="power"
                     )
                 ),
                 vol.Optional("energy_sensor"): selector.EntitySelector(
                     selector.EntitySelectorConfig(
-                        domain="sensor", multiple=False, device_class="energy"
+                        domain=[SENSOR_DOMAIN], multiple=False, device_class="energy"
                     )
                 ),
             }
@@ -153,20 +159,23 @@ class DynamicEnergyCostOptionsFlow(config_entries.OptionsFlow):
                     "electricity_price_sensor",
                     default=current_values.get("electricity_price_sensor"),
                 ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor", multiple=False)
+                    selector.EntitySelectorConfig(
+                        domain=[SENSOR_DOMAIN, NUMBER_DOMAIN, INPUT_NUMBER_DOMAIN],
+                        multiple=False,
+                    )
                 ),
                 vol.Optional(
                     "power_sensor", default=current_values.get("power_sensor")
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(
-                        domain="sensor", multiple=False, device_class="power"
+                        domain=[SENSOR_DOMAIN], multiple=False, device_class="power"
                     )
                 ),
                 vol.Optional(
                     "energy_sensor", default=current_values.get("energy_sensor")
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(
-                        domain="sensor", multiple=False, device_class="energy"
+                        domain=[SENSOR_DOMAIN], multiple=False, device_class="energy"
                     )
                 ),
             }

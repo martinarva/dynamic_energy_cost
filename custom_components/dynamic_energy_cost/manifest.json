@@ -3,7 +3,7 @@
   "name": "Dynamic Energy Cost",
   "codeowners": ["@martinarva"],
   "config_flow": true,
-  "dependencies": ["sensor"],
+  "dependencies": ["sensor","input_number","number","utility_meter"],
   "documentation": "https://github.com/martinarva/dynamic_energy_cost/",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/martinarva/dynamic_energy_cost/issues/",
