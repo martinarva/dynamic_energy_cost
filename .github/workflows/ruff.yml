@@ -3,7 +3,7 @@ on:
   push:
     branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "Develop" ]
 env:
   DEFAULT_PYTHON: "3.12" 
 jobs:
