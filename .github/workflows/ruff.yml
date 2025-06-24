@@ -1,7 +1,7 @@
 name: Ruff Linter
 on: 
   push:
-    branches: [ "main" ]
+    branches: [ "main", "Develop" ]
   pull_request:
     branches: [ "main", "Develop" ]
 env:
