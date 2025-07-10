@@ -66,14 +66,10 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "energy_sensor"
                 ):
                     _LOGGER.warning("Neither power nor energy sensor was provided")
-                    raise SchemaFlowError(
-                        error.get_config_flow_translate_key() or "invalid_config"
-                    ) from error
+                    raise SchemaFlowError("invalid_config")
                 if user_input.get("power_sensor") and user_input.get("energy_sensor"):
                     _LOGGER.warning("Both power and energy sensors were provided")
-                    raise SchemaFlowError(
-                        error.get_config_flow_translate_key() or "missing_sensor"
-                    ) from error
+                    raise SchemaFlowError("missing_sensor")
 
                 # Create the config dictionary
                 config = {
