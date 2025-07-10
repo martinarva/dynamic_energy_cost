@@ -6,36 +6,14 @@ from homeassistant import config_entries
 from homeassistant.components.input_number import DOMAIN as INPUT_NUMBER_DOMAIN
 from homeassistant.components.number import DOMAIN as NUMBER_DOMAIN
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
-from homeassistant.exceptions import ConfigValidationError
-from homeassistant.exceptions import HomeAssistantError
-from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.schema_config_entry_flow import SchemaFlowError
 
 import voluptuous as vol
-from homeassistant.components.utility_meter import CONF_METER_TYPE, METER_TYPES
-from homeassistant.components.sensor import SensorDeviceClass
-from homeassistant.const import (
-    CONF_ATTRIBUTE,
-    CONF_DEVICE,
-    CONF_DOMAIN,
-    CONF_ENTITIES,
-    CONF_ENTITY_ID,
-    CONF_NAME,
-    CONF_UNIQUE_ID,
-    CONF_UNIT_OF_MEASUREMENT,
-    Platform,
-    UnitOfEnergy,
-    UnitOfPower,
-    UnitOfTime,
-)
 
 from .const import DOMAIN
 
-from .sensors.power import PowerSensor
-from .strategy.factory import PowerCalculatorStrategyFactory
-from .strategy.wled import CONFIG_SCHEMA as SCHEMA_POWER_WLED
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -66,14 +44,10 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     "energy_sensor"
                 ):
                     _LOGGER.warning("Neither power nor energy sensor was provided")
-                    raise SchemaFlowError(
-                        error.get_config_flow_translate_key() or "invalid_config"
-                    ) from error
+                    raise SchemaFlowError("invalid_config")
                 if user_input.get("power_sensor") and user_input.get("energy_sensor"):
                     _LOGGER.warning("Both power and energy sensors were provided")
-                    raise SchemaFlowError(
-                        error.get_config_flow_translate_key() or "missing_sensor"
-                    ) from error
+                    raise SchemaFlowError("missing_sensor")
 
                 # Create the config dictionary
                 config = {
