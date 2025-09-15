@@ -16,7 +16,7 @@ jobs:
       id-token: write
     steps:
       - name: ⤵️ Check out code from GitHub
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         
       - name: 🔢 Adjust version number
         shell: "bash"
@@ -31,7 +31,7 @@ jobs:
           zip dynamic_energy_cost.zip -r ./
 
       - name: ⬆️ Upload zip to release
-        uses: softprops/action-gh-release@v2.3.2
+        uses: softprops/action-gh-release@v2.3.3
         with:
           files: ${{ github.workspace }}/custom_components/dynamic_energy_cost/dynamic_energy_cost.zip
         
