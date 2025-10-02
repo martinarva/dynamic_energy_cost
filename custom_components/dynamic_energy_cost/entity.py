@@ -35,17 +35,14 @@ class BaseUtilitySensor(SensorEntity):
         if self._interval == QUARTERLY:
             # Only activate for testing purpose:
             # return current_time + timedelta(seconds=30)
-
+            
             current_time = current_time.replace(second=0, microsecond=0)
 
-            current_minutes = current_time.minute
-            minutes_to_add = 15 - (current_minutes % 15)
-            if minutes_to_add == 0:
-                minutes_to_add = 15
-            
-            return current_time + timedelta(
-                minutes=minutes_to_add
-            )
+            next_quarter = ((current_time.minute // 15) + 1) * 15
+            if next_quarter >= 60:
+                return current_time.replace(minute=0) + timedelta(hours=1)
+            else:
+                return current_time.replace(minute=next_quarter)
         
         if self._interval == HOURLY:
             # Only activate for testing purpose:
