@@ -15,6 +15,7 @@ from homeassistant.helpers.template import is_number
 from homeassistant.util.dt import now
 
 from .const import (
+    QUARTERLY,
     HOURLY,
     DAILY,
     DOMAIN,
@@ -30,7 +31,7 @@ from .const import (
 )
 from .entity import BaseUtilitySensor
 
-INTERVALS = [HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
+INTERVALS = [QUARTERLY, HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
 
 _LOGGER = logging.getLogger(__name__)
 
