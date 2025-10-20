@@ -10,9 +10,9 @@ jobs:
   ruff:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
       - name: Install dependencies
@@ -25,6 +25,6 @@ jobs:
           ruff check --fix --verbose
           ruff format --verbose
       # place commit 
-      - uses: stefanzweifel/git-auto-commit-action@v6
+      - uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: 'style fixes by ruff'
