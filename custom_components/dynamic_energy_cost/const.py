@@ -7,6 +7,7 @@ ENERGY_SENSOR = "energy_sensor"
 SERVICE_RESET_COST = "reset_cost"
 SERVICE_CALIBRATE = "calibrate"
 
+QUARTERLY = "quarterly"
 HOURLY = "hourly"
 DAILY = "daily"
 WEEKLY = "weekly"
