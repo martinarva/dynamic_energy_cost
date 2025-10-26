@@ -9,7 +9,7 @@ from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.util.dt import now
 
-from .const import HOURLY, DAILY, MANUAL, MONTHLY, WEEKLY, YEARLY
+from .const import QUARTERLY, HOURLY, DAILY, MANUAL, MONTHLY, WEEKLY, YEARLY
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,6 +32,18 @@ class BaseUtilitySensor(SensorEntity):
         """Determine the exact datetime for the next reset based on the interval."""
         current_time = now()
 
+        if self._interval == QUARTERLY:
+            # Only activate for testing purpose:
+            # return current_time + timedelta(seconds=30)
+            
+            current_time = current_time.replace(second=0, microsecond=0)
+
+            next_quarter = ((current_time.minute // 15) + 1) * 15
+            if next_quarter >= 60:
+                return current_time.replace(minute=0) + timedelta(hours=1)
+            else:
+                return current_time.replace(minute=next_quarter)
+        
         if self._interval == HOURLY:
             # Only activate for testing purpose:
             # return current_time + timedelta(seconds=30)
