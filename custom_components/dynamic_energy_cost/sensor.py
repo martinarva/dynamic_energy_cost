@@ -15,6 +15,7 @@ from homeassistant.helpers.template import is_number
 from homeassistant.util.dt import now
 
 from .const import (
+    QUARTERLY,
     HOURLY,
     DAILY,
     DOMAIN,
@@ -30,7 +31,7 @@ from .const import (
 )
 from .entity import BaseUtilitySensor
 
-INTERVALS = [HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
+INTERVALS = [QUARTERLY, HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -386,7 +387,7 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
                 self._cumulative_energy += (
                     energy_difference  # Add to the running total of energy
                 )
-                _LOGGER.info(
+                _LOGGER.debug(
                     f"Change in Energy price: cumulative cost {self._cumulative_cost} EUR and cumulative energy usage to {self._cumulative_energy} kWh"
                 )
 
@@ -436,7 +437,7 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
             self._state = (
                 self._cumulative_cost + cost_increment
             )  # set state to the cumulative cost + increment since last energy reading
-            _LOGGER.info(
+            _LOGGER.debug(
                 f"Energy cost incremented by {cost_increment} on top of {self._cumulative_cost}, total cost now {self._state} EUR"
             )
 
