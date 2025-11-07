@@ -105,58 +105,55 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     def async_get_options_flow(config_entry):
         """Get the options flow for this handler."""
-        return DynamicEnergyCostOptionsFlow(config_entry)
+        return DynamicEnergyCostOptionsFlow()
 
 
 # Change existing config added !!
 class DynamicEnergyCostOptionsFlow(config_entries.OptionsFlow):
     """Handle an options flow for DynamicEnergyCost."""
 
-    def __init__(self, config_entry):
-        """Initialize options flow."""
-        self.config_entry = config_entry
-
     async def async_step_init(self, user_input=None):
         """Manage the options."""
-        return await self.async_step_user(user_input)
 
-    async def async_step_user(self, user_input=None):
-        """Handle the initial step."""
         errors = {}
 
-        # Get the current values from the config entry
-        current_values = self.config_entry.data
+        if user_input is not None:
+            _LOGGER.info("Received user input: %s", user_input)
+            try:
+                # Validate the electricity price sensor
+                cv.entity_id(user_input["electricity_price_sensor"])
+
+                # Create the config dictionary
+                config = self.config_entry.data | user_input
+
+                # write updated config entries
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry, data=config, options=self.config_entry.options
+                )
+
+                # write empty options entries
+                return self.async_create_entry(title=None, data=None)
+            except vol.Invalid as err:
+                _LOGGER.error("Validation error: %s", err)
+                errors["base"] = "invalid_entity"
 
         schema = vol.Schema(
             {
                 vol.Required(
                     "electricity_price_sensor",
-                    default=current_values.get("electricity_price_sensor"),
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain=[SENSOR_DOMAIN, NUMBER_DOMAIN, INPUT_NUMBER_DOMAIN],
                         multiple=False,
                     )
                 ),
-                vol.Optional(
-                    "power_sensor", default=current_values.get("power_sensor")
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain=[SENSOR_DOMAIN], multiple=False, device_class="power"
-                    )
-                ),
-                vol.Optional(
-                    "energy_sensor", default=current_values.get("energy_sensor")
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain=[SENSOR_DOMAIN], multiple=False, device_class="energy"
-                    )
-                ),
             }
         )
 
         return self.async_show_form(
-            step_id="user",
-            data_schema=schema,
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(
+                schema, self.config_entry.data
+            ),
             errors=errors,
         )
