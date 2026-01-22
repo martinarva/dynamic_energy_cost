@@ -106,6 +106,7 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Get the options flow for this handler."""
         return DynamicEnergyCostOptionsFlow(config_entry)
 
+
 class DynamicEnergyCostOptionsFlow(config_entries.OptionsFlow):
     """Handle an options flow for DynamicEnergyCost."""
 
@@ -143,10 +144,7 @@ class DynamicEnergyCostOptionsFlow(config_entries.OptionsFlow):
             ("energy_sensor", "energy"),
         ):
             schema_dict[
-                vol.Optional(
-                    key,
-                    default=current_values.get(key, vol.UNDEFINED)
-                )
+                vol.Optional(key, default=current_values.get(key, vol.UNDEFINED))
             ] = selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     domain=[SENSOR_DOMAIN],
