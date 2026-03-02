@@ -128,10 +128,7 @@ class DynamicEnergyCostOptionsFlow(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=user_input)
 
         schema_dict = {
-            vol.Required(
-                "electricity_price_sensor",
-                default=current_values.get("electricity_price_sensor"),
-            ): selector.EntitySelector(
+            vol.Required("electricity_price_sensor"): selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     domain=[SENSOR_DOMAIN, NUMBER_DOMAIN, INPUT_NUMBER_DOMAIN],
                     multiple=False,
@@ -144,7 +141,7 @@ class DynamicEnergyCostOptionsFlow(config_entries.OptionsFlow):
             ("energy_sensor", "energy"),
         ):
             schema_dict[
-                vol.Optional(key, default=current_values.get(key, vol.UNDEFINED))
+                vol.Optional(key)
             ] = selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     domain=[SENSOR_DOMAIN],
@@ -153,8 +150,10 @@ class DynamicEnergyCostOptionsFlow(config_entries.OptionsFlow):
                 )
             )
 
+        data_schema = vol.Schema(schema_dict)
+        data_schema = self.add_suggested_values_to_schema(data_schema, current_values)
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(schema_dict),
+            data_schema=data_schema,
             errors=errors,
         )
