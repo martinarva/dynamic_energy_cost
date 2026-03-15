@@ -8,7 +8,6 @@ from homeassistant.components.number import DOMAIN as NUMBER_DOMAIN
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.helpers import selector
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.schema_config_entry_flow import SchemaFlowError
 
 import voluptuous as vol
 
@@ -21,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Dynamic Energy Cost."""
 
-    VERSION = 1
+    VERSION = 2
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     async def async_step_user(self, user_input=None):
@@ -32,40 +31,45 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             _LOGGER.info("Received user input: %s", user_input)
             try:
-                # Validate the electricity price sensor
                 cv.entity_id(user_input["electricity_price_sensor"])
-                if user_input.get("power_sensor"):
+
+                if user_input.get("power_sensor", "").strip():
                     cv.entity_id(user_input["power_sensor"])
-                if user_input.get("energy_sensor"):
+
+                if user_input.get("energy_sensor", "").strip():
                     cv.entity_id(user_input["energy_sensor"])
 
-                # Check that either power sensor or energy sensor is filled
-                if not user_input.get("power_sensor") and not user_input.get(
-                    "energy_sensor"
-                ):
-                    _LOGGER.warning("Neither power nor energy sensor was provided")
-                    raise SchemaFlowError("invalid_config")
-                if user_input.get("power_sensor") and user_input.get("energy_sensor"):
-                    _LOGGER.warning("Both power and energy sensors were provided")
-                    raise SchemaFlowError("missing_sensor")
+#                if user_input.get("power_sensor"):
+#                    cv.entity_id(user_input["power_sensor"])
 
-                # Create the config dictionary
-                config = {
-                    "electricity_price_sensor": user_input["electricity_price_sensor"],
-                    "power_sensor": user_input.get("power_sensor"),
-                    "energy_sensor": user_input.get("energy_sensor"),
-                    "integration_description": user_input.get(
-                        "integration_description", "Unnamed"
-                    ),
-                }
-                _LOGGER.info("Config entry created successfully")
-                return self.async_create_entry(
-                    title=f"Dynamic Energy Cost - {user_input.get('integration_description', 'Unnamed')}",
-                    data=config,
-                )
+#                if user_input.get("energy_sensor"):
+#                    cv.entity_id(user_input["energy_sensor"])
+
+                if not user_input.get("power_sensor") and not user_input.get("energy_sensor"):
+                    _LOGGER.warning("Neither power nor energy sensor was provided")
+                    errors["base"] = "missing_sensor"
+                elif user_input.get("power_sensor") and user_input.get("energy_sensor"):
+                    _LOGGER.warning("Both power and energy sensors were provided")
+                    errors["base"] = "invalid_config"
+                else:
+                    config = {
+                        "electricity_price_sensor": user_input["electricity_price_sensor"],
+                        "power_sensor": user_input.get("power_sensor"),
+                        "energy_sensor": user_input.get("energy_sensor"),
+                        "integration_description": user_input.get(
+                            "integration_description", "Unnamed"
+                        ),
+                    }
+                    _LOGGER.info("Config entry created successfully")
+                    return self.async_create_entry(
+                        title=f"Dynamic Energy Cost - {user_input.get('integration_description', 'Unnamed')}",
+                        data=config,
+                    )
+
             except vol.Invalid as err:
                 _LOGGER.error("Validation error: %s", err)
                 errors["base"] = "invalid_entity"
+
 
         schema = vol.Schema(
             {
@@ -104,15 +108,16 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     def async_get_options_flow(config_entry):
         """Get the options flow for this handler."""
-        return DynamicEnergyCostOptionsFlow(config_entry)
+        return DynamicEnergyCostOptionsFlow()
 
 
 class DynamicEnergyCostOptionsFlow(config_entries.OptionsFlow):
     """Handle an options flow for DynamicEnergyCost."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+    def __init__(self) -> None:
         """Initialize options flow."""
         super().__init__()
+
 
     async def async_step_init(self, user_input=None):
         """Manage the options."""
@@ -122,15 +127,66 @@ class DynamicEnergyCostOptionsFlow(config_entries.OptionsFlow):
         """Handle the initial step."""
         errors = {}
 
-        current_values = self.config_entry.options or self.config_entry.data
+        current_values = {
+            "electricity_price_sensor": self.config_entry.options.get(
+                "electricity_price_sensor",
+                self.config_entry.data.get("electricity_price_sensor"),
+            ),
+            "power_sensor": self.config_entry.options.get(
+                "power_sensor",
+                self.config_entry.data.get("power_sensor"),
+            ),
+            "energy_sensor": self.config_entry.options.get(
+                "energy_sensor",
+                self.config_entry.data.get("energy_sensor"),
+            ),
+        }
 
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            _LOGGER.info("Received user input in options flow: %s", user_input)
+
+            normalized_input = {
+                "electricity_price_sensor": user_input["electricity_price_sensor"],
+                "power_sensor": user_input.get("power_sensor") or None,
+                "energy_sensor": user_input.get("energy_sensor") or None,
+            }
+
+            try:
+                cv.entity_id(normalized_input["electricity_price_sensor"])
+
+                if normalized_input["power_sensor"]:
+                    cv.entity_id(normalized_input["power_sensor"])
+
+                if normalized_input["energy_sensor"]:
+                    cv.entity_id(normalized_input["energy_sensor"])
+
+                if (
+                    not normalized_input["power_sensor"]
+                    and not normalized_input["energy_sensor"]
+                ):
+                    _LOGGER.warning(
+                        "Neither power nor energy sensor was provided in options flow"
+                    )
+                    errors["base"] = "missing_sensor"
+                elif (
+                    normalized_input["power_sensor"]
+                    and normalized_input["energy_sensor"]
+                ):
+                    _LOGGER.warning(
+                        "Both power and energy sensors were provided in options flow"
+                    )
+                    errors["base"] = "invalid_config"
+                else:
+                    return self.async_create_entry(title="", data=normalized_input)
+
+            except vol.Invalid as err:
+                _LOGGER.error("Validation error in options flow: %s", err)
+                errors["base"] = "invalid_entity"
 
         schema_dict = {
             vol.Required(
                 "electricity_price_sensor",
-                default=current_values.get("electricity_price_sensor"),
+                default=current_values["electricity_price_sensor"],
             ): selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     domain=[SENSOR_DOMAIN, NUMBER_DOMAIN, INPUT_NUMBER_DOMAIN],
@@ -139,19 +195,39 @@ class DynamicEnergyCostOptionsFlow(config_entries.OptionsFlow):
             )
         }
 
+
         for key, device_class in (
             ("power_sensor", "power"),
             ("energy_sensor", "energy"),
         ):
-            schema_dict[
-                vol.Optional(key, default=current_values.get(key, vol.UNDEFINED))
-            ] = selector.EntitySelector(
+            default_value = current_values.get(key)
+            schema_key = vol.Optional(key, default=default_value) if default_value else vol.Optional(key)
+            schema_dict[schema_key] = selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     domain=[SENSOR_DOMAIN],
                     multiple=False,
                     device_class=device_class,
                 )
             )
+
+
+#        for key, device_class in (
+#            ("power_sensor", "power"),
+#            ("energy_sensor", "energy"),
+#        ):
+#            default_value = current_values.get(key)
+#            schema_dict[
+#                vol.Optional(
+#                    key,
+#                    default=default_value if default_value is not None else vol.UNDEFINED,
+#                )
+#            ] = selector.EntitySelector(
+#                selector.EntitySelectorConfig(
+#                    domain=[SENSOR_DOMAIN],
+#                    multiple=False,
+#                    device_class=device_class,
+#                )
+#            )
 
         return self.async_show_form(
             step_id="user",

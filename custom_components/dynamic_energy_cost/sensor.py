@@ -66,13 +66,14 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Sensor platform setup based on user configuration."""
-    data = config_entry.data
+    data = {**config_entry.data, **config_entry.options}
     electricity_price_sensor = data[ELECTRICITY_PRICE_SENSOR]
     sensors = []
 
-    if data[POWER_SENSOR]:
-        # Setup power-based sensors
-        power_sensor = data[POWER_SENSOR]
+    power_sensor = data.get(POWER_SENSOR)
+    energy_sensor = data.get(ENERGY_SENSOR)
+
+    if power_sensor:
         real_time_cost_sensor = RealTimeCostSensor(
             hass,
             config_entry,
@@ -82,16 +83,20 @@ async def async_setup_entry(
         sensors.append(real_time_cost_sensor)
 
         utility_sensors = [
-            PowerCostSensor(hass, real_time_cost_sensor, interval)
+            PowerCostSensor(hass, config_entry, real_time_cost_sensor, interval)
             for interval in INTERVALS
         ]
         sensors.extend(utility_sensors)
 
-    if data[ENERGY_SENSOR]:
-        # Setup energy-based sensors
-        energy_sensor = data[ENERGY_SENSOR]
+    if energy_sensor:
         utility_sensors = [
-            EnergyCostSensor(hass, energy_sensor, electricity_price_sensor, interval)
+            EnergyCostSensor(
+                hass,
+                config_entry,
+                energy_sensor,
+                electricity_price_sensor,
+                interval,
+            )
             for interval in INTERVALS
         ]
         sensors.extend(utility_sensors)
@@ -122,17 +127,16 @@ class RealTimeCostSensor(SensorEntity):
         self,
         hass: HomeAssistant,
         config_entry: ConfigEntry,
-        electricity_price_sensor_id: SensorEntity,
-        power_sensor_id: SensorEntity,
+        electricity_price_sensor_id: str,
+        power_sensor_id: str,
     ) -> None:
-        """Initialize the sensor."""
         self.hass = hass
         self._config_entry = config_entry
         self._electricity_price_sensor_id = electricity_price_sensor_id
         self._power_sensor_id = power_sensor_id
         self._state = Decimal(0)
         self._unit_of_measurement = None
-
+        self._attr_unique_id = f"{config_entry.entry_id}_real_time_cost"
         _LOGGER.debug(
             "Initialized Real Time Cost Sensor with price sensor: %s and power sensor: %s",
             electricity_price_sensor_id,
@@ -153,10 +157,15 @@ class RealTimeCostSensor(SensorEntity):
         # Prepare a device name using the friendly base part
         self._device_name = friendly_name + " Dynamic Energy Cost"
 
+#    @property
+#    def unique_id(self):
+#        """Return a unique identifier for this sensor."""
+#        return f"{self._config_entry.entry_id}_{self._power_sensor_id}_real_time_cost"
+
     @property
     def unique_id(self):
         """Return a unique identifier for this sensor."""
-        return f"{self._config_entry.entry_id}_{self._power_sensor_id}_real_time_cost"
+        return self._attr_unique_id
 
     @property
     def device_info(self):
@@ -227,13 +236,16 @@ class RealTimeCostSensor(SensorEntity):
         except ValueError as e:
             _LOGGER.error("Error converting sensor data to float: %s", e)
 
+
     async def async_added_to_hass(self):
         """Register callbacks when added to hass."""
         self._unit_of_measurement = f"{get_currency(self.hass)}/h"
-        async_track_state_change_event(
-            self.hass,
-            [self._electricity_price_sensor_id, self._power_sensor_id],
-            self.handle_state_change,
+        self.async_on_remove(
+            async_track_state_change_event(
+                self.hass,
+                [self._electricity_price_sensor_id, self._power_sensor_id],
+                self.handle_state_change,
+            )
         )
         _LOGGER.info(
             "Callbacks registered for %s and %s",
@@ -250,17 +262,21 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
     def __init__(
         self,
         hass: HomeAssistant,
-        energy_sensor_id: SensorEntity,
-        price_sensor_id: SensorEntity,
+        config_entry: ConfigEntry,
+        energy_sensor_id: str,
+        price_sensor_id: str,
         interval: str,
     ) -> None:
-        """Initialize the sensor."""
         super().__init__(hass, interval)
+        self._config_entry = config_entry
         self._energy_sensor_id = energy_sensor_id
         self._price_sensor_id = price_sensor_id
+        self._attr_unique_id = f"{config_entry.entry_id}_{interval}_energy_cost"
         self._last_energy_reading = None
         self._cumulative_energy = 0.0
-        self._cumulative_cost = None  # updated on price change events and used for more precise cost calculations
+        self._cumulative_cost = 0.0  # updated on price change events and used for more precise cost calculations
+        #self._cumulative_cost = None  # updated on price change events and used for more precise cost calculations
+
 
         _LOGGER.debug(
             "Sensor initialized with energy sensor ID %s and price sensor ID %s",
@@ -283,10 +299,15 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         self._name = f"{self._base_name} {self._interval.capitalize()} Energy Cost"
         self._device_name = friendly_name + " Dynamic Energy Cost"
 
+#    @property
+#    def unique_id(self):
+#        """Return a unique identifier for this sensor."""
+#        return f"{self._price_sensor_id}_{self._energy_sensor_id}_{self._interval}_cost"
+
     @property
     def unique_id(self):
         """Return a unique identifier for this sensor."""
-        return f"{self._price_sensor_id}_{self._energy_sensor_id}_{self._interval}_cost"
+        return self._attr_unique_id
 
     @property
     def device_info(self):
@@ -318,7 +339,6 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
     async def async_added_to_hass(self):
         """Load the last known state and subscribe to updates."""
         await super().async_added_to_hass()
-        # Restore state if available
         self._unit_of_measurement = get_currency(self.hass)
         last_state = await self.async_get_last_state()
 
@@ -337,17 +357,23 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
                     last_state.attributes.get("cumulative_cost")
                 )
             else:
-                # For backwards compatibility
                 self._cumulative_cost = float(last_state.state)
 
         self.async_write_ha_state()
-        # track energy sensor changes
-        async_track_state_change_event(
-            self.hass, self._energy_sensor_id, self._async_update_energy_event
+
+        self.async_on_remove(
+            async_track_state_change_event(
+                self.hass,
+                [self._energy_sensor_id],
+                self._async_update_energy_event,
+            )
         )
-        # track also the price sensor changes for more accuracy
-        async_track_state_change_event(
-            self.hass, self._price_sensor_id, self._async_update_price_event
+        self.async_on_remove(
+            async_track_state_change_event(
+                self.hass,
+                [self._price_sensor_id],
+                self._async_update_price_event,
+            )
         )
         self.schedule_next_reset()
 
@@ -454,21 +480,22 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
     def __init__(
         self,
         hass: HomeAssistant,
+        config_entry: ConfigEntry,
         real_time_cost_sensor: RealTimeCostSensor,
         interval: str,
     ) -> None:
-        """Initialize the sensor."""
         super().__init__(hass, interval)
         self._real_time_cost_sensor = real_time_cost_sensor
+        self._attr_unique_id = f"{config_entry.entry_id}_{interval}_power_cost"
         base_name = real_time_cost_sensor.name.replace(
             " Real Time Energy Cost", ""
         ).strip()
         self._name = f"{base_name} {interval.title()} Energy Cost"
 
+
     async def async_added_to_hass(self):
         """Restore state and set up updates when added to Home Assistant."""
         await super().async_added_to_hass()
-        # Restore state if available
         self._unit_of_measurement = get_currency(self.hass)
         last_state = await self.async_get_last_state()
 
@@ -487,10 +514,12 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
         )
 
         try:
-            async_track_state_change_event(
-                self.hass,
-                [self._real_time_cost_sensor.entity_id],
-                self._handle_real_time_cost_update,
+            self.async_on_remove(
+                async_track_state_change_event(
+                    self.hass,
+                    [self._real_time_cost_sensor.entity_id],
+                    self._handle_real_time_cost_update,
+                )
             )
         except Exception as e:
             _LOGGER.error("Failed to track state change: %s", str(e))
@@ -531,10 +560,16 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
         except (InvalidOperation, TypeError) as e:
             _LOGGER.error("Error updating cumulative cost: %s", str(e))
 
+#    @property
+#    def unique_id(self):
+#        """Return a unique identifier for this sensor."""
+#        return f"{self._real_time_cost_sensor.unique_id}_{self._interval}"
+
     @property
     def unique_id(self):
         """Return a unique identifier for this sensor."""
-        return f"{self._real_time_cost_sensor.unique_id}_{self._interval}"
+        return self._attr_unique_id
+
 
     @property
     def device_info(self):

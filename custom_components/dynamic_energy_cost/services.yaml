@@ -10,7 +10,7 @@ calibrate:
   target:
     entity:
       domain: sensor
-      integration: utility_meter
+      integration: dynamic_energy_cost
   fields:
     value:
       name: Value
