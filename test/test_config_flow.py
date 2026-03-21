@@ -7,6 +7,7 @@ from unittest.mock import patch
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+import voluptuous as vol
 
 from custom_components.dynamic_energy_cost.config_flow import _entity_selector, _schema
 from custom_components.dynamic_energy_cost.const import DOMAIN
@@ -85,6 +86,31 @@ def test_options_schema_relaxes_optional_selector_filters_for_existing_entries()
                 "reorder": False,
             }
         }
+    }
+
+
+async def test_options_flow_uses_suggested_values_instead_of_defaults(hass):
+    """Existing sensor values stay editable instead of becoming hard defaults."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Dynamic Energy Cost - Boiler",
+        data={
+            "integration_description": "Boiler",
+            "electricity_price_sensor": "sensor.electricity_price",
+            "power_sensor": "sensor.boiler_switch_0_device_power",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    schema = result["data_schema"].schema
+    power_key = next(
+        key for key in schema if getattr(key, "schema", None) == "power_sensor"
+    )
+
+    assert power_key.default is vol.UNDEFINED
+    assert power_key.description == {
+        "suggested_value": "sensor.boiler_switch_0_device_power"
     }
 
 

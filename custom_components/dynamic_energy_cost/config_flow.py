@@ -76,7 +76,11 @@ def _validate_config(user_input: dict[str, Any]) -> dict[str, Any]:
     return config
 
 
-def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
+def _schema(
+    defaults: dict[str, Any] | None = None,
+    *,
+    use_defaults: bool = True,
+) -> vol.Schema:
     """Build the shared config and options schema."""
     defaults = defaults or {}
     relaxed_optional_selectors = bool(defaults)
@@ -84,17 +88,25 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     schema_dict = {
         vol.Required(
             "integration_description",
-            default=defaults.get("integration_description", "Unnamed"),
+            default=defaults.get("integration_description", "Unnamed")
+            if use_defaults
+            else vol.UNDEFINED,
         ): selector.TextSelector(),
         vol.Required(
             ELECTRICITY_PRICE_SENSOR,
-            default=defaults.get(ELECTRICITY_PRICE_SENSOR),
+            default=defaults.get(ELECTRICITY_PRICE_SENSOR)
+            if use_defaults
+            else vol.UNDEFINED,
         ): _entity_selector(domains=[SENSOR_DOMAIN, NUMBER_DOMAIN, INPUT_NUMBER_DOMAIN]),
     }
 
     for key, device_class in ((POWER_SENSOR, "power"), (ENERGY_SENSOR, "energy")):
         default = _clean_optional_value(defaults.get(key, vol.UNDEFINED))
-        schema_dict[vol.Optional(key, default=default)] = vol.Any(
+        marker = vol.Optional(
+            key,
+            default=default if use_defaults and default is not vol.UNDEFINED else vol.UNDEFINED,
+        )
+        schema_dict[marker] = vol.Any(
             None,
             _entity_selector(
                 domains=[SENSOR_DOMAIN],
@@ -134,7 +146,7 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=_schema(),
+            data_schema=self.add_suggested_values_to_schema(_schema(), user_input),
             errors=errors,
             description_placeholders={
                 "integration_description": "Name to append the integration title",
@@ -180,6 +192,9 @@ class DynamicEnergyCostOptionsFlow(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=_schema(current_values),
+            data_schema=self.add_suggested_values_to_schema(
+                _schema(current_values, use_defaults=False),
+                user_input or current_values,
+            ),
             errors=errors,
         )
