@@ -140,7 +140,11 @@ class BaseUtilitySensor(SensorEntity):
     async def async_will_remove_from_hass(self):
         """Remove the reset event from the schedule."""
         if self.event_unsub:
-            await self.hass.async_add_executor_job(self.event_unsub())
+            event_unsub = self.event_unsub
+            self.event_unsub = None
+            event_unsub()
+
+        await super().async_will_remove_from_hass()
 
     @property
     def state(self):

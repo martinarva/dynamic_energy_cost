@@ -231,10 +231,12 @@ class RealTimeCostSensor(SensorEntity):
     async def async_added_to_hass(self):
         """Register callbacks when added to hass."""
         self._unit_of_measurement = f"{get_currency(self.hass)}/h"
-        async_track_state_change_event(
-            self.hass,
-            [self._electricity_price_sensor_id, self._power_sensor_id],
-            self.handle_state_change,
+        self.async_on_remove(
+            async_track_state_change_event(
+                self.hass,
+                [self._electricity_price_sensor_id, self._power_sensor_id],
+                self.handle_state_change,
+            )
         )
         _LOGGER.info(
             "Callbacks registered for %s and %s",
@@ -343,12 +345,16 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
 
         self.async_write_ha_state()
         # track energy sensor changes
-        async_track_state_change_event(
-            self.hass, self._energy_sensor_id, self._async_update_energy_event
+        self.async_on_remove(
+            async_track_state_change_event(
+                self.hass, self._energy_sensor_id, self._async_update_energy_event
+            )
         )
         # track also the price sensor changes for more accuracy
-        async_track_state_change_event(
-            self.hass, self._price_sensor_id, self._async_update_price_event
+        self.async_on_remove(
+            async_track_state_change_event(
+                self.hass, self._price_sensor_id, self._async_update_price_event
+            )
         )
         self.schedule_next_reset()
 
@@ -488,10 +494,12 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
         )
 
         try:
-            async_track_state_change_event(
-                self.hass,
-                [self._real_time_cost_sensor.entity_id],
-                self._handle_real_time_cost_update,
+            self.async_on_remove(
+                async_track_state_change_event(
+                    self.hass,
+                    [self._real_time_cost_sensor.entity_id],
+                    self._handle_real_time_cost_update,
+                )
             )
         except Exception as e:
             _LOGGER.error("Failed to track state change: %s", str(e))
