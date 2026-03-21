@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from datetime import datetime
 from unittest.mock import AsyncMock, Mock
+
+from homeassistant.components.sensor import SensorStateClass
+from homeassistant.util import dt as dt_util
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -295,6 +299,42 @@ async def test_energy_sensor_restores_legacy_state_without_cumulative_cost_attri
     assert sensor._cumulative_energy == 2.5
 
 
+async def test_energy_sensor_exposes_and_restores_last_reset(hass):
+    """Energy cost sensors expose last_reset and restore it."""
+    last_reset = datetime(2026, 3, 1, 0, 0, tzinfo=dt_util.UTC)
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.heat_pump_energy",
+        "sensor.electricity_price",
+        HOURLY,
+    )
+    sensor.async_get_last_state = AsyncMock(
+        return_value=Mock(
+            state="9.5",
+            attributes={
+                "last_energy_reading": 4.0,
+                "cumulative_energy": 2.5,
+                "cumulative_cost": 9.5,
+                "last_reset": last_reset.isoformat(),
+            },
+        )
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor.schedule_next_reset = Mock()
+
+    await sensor.async_added_to_hass()
+
+    assert sensor.state_class is SensorStateClass.TOTAL
+    assert sensor.last_reset == last_reset
+
+    previous_reset = sensor.last_reset
+    sensor.async_reset()
+
+    assert sensor.last_reset is not None
+    assert sensor.last_reset >= previous_reset
+
+
 def test_power_sensor_first_update_only_sets_baseline(hass):
     """Power cost sensor avoids a large jump when no prior update timestamp exists."""
     realtime_sensor = Mock(entity_id="sensor.heat_pump_real_time_energy_cost")
@@ -445,6 +485,37 @@ async def test_power_sensor_restore_uses_current_rate_as_baseline(hass):
 
     assert sensor.state == Decimal("4.0")
     assert sensor._last_cost_rate == Decimal("2.5")
+
+
+async def test_power_sensor_exposes_total_state_class_and_last_reset(hass):
+    """Power cost sensors behave like resetting TOTAL sensors."""
+    realtime_sensor = Mock(entity_id="sensor.heat_pump_real_time_energy_cost")
+    realtime_sensor.name = "Heat Pump Real Time Energy Cost"
+    realtime_sensor.device_info = {"identifiers": {(DOMAIN, "entry-123")}}
+    realtime_sensor.unique_id = "entry-123_real_time_cost"
+    realtime_sensor._config_entry = _entry()
+
+    last_reset = datetime(2026, 3, 1, 0, 0, tzinfo=dt_util.UTC)
+    sensor = PowerCostSensor(hass, realtime_sensor, HOURLY)
+    sensor.async_get_last_state = AsyncMock(
+        return_value=Mock(
+            state="4.0",
+            attributes={"last_reset": last_reset.isoformat()},
+        )
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor.schedule_next_reset = Mock()
+
+    await sensor.async_added_to_hass()
+
+    assert sensor.state_class is SensorStateClass.TOTAL
+    assert sensor.last_reset == last_reset
+
+    previous_reset = sensor.last_reset
+    sensor.async_reset()
+
+    assert sensor.last_reset is not None
+    assert sensor.last_reset >= previous_reset
 
 
 def test_energy_sensor_uses_entry_based_device_identifier(hass):

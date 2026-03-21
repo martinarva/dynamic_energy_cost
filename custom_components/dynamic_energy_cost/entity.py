@@ -7,6 +7,7 @@ import logging
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.helpers.event import async_track_point_in_time
+from homeassistant.util import dt as dt_util
 from homeassistant.util.dt import now
 
 from .const import QUARTERLY, HOURLY, DAILY, MANUAL, MONTHLY, WEEKLY, YEARLY
@@ -26,6 +27,7 @@ class BaseUtilitySensor(SensorEntity):
         self._interval = interval
         self.event_unsub: CALLBACK_TYPE | None = None
         self._last_update = now()
+        self._last_reset = now()
         self._name = None
 
     def calculate_next_reset_time(self):
@@ -124,6 +126,7 @@ class BaseUtilitySensor(SensorEntity):
         if hasattr(self, "_last_cost_rate"):
             self._last_cost_rate = None  # pylint: disable=attribute-defined-outside-init
         self._last_update = now()
+        self._last_reset = now()
         self.async_write_ha_state()
         _LOGGER.debug("Meter reset for %s", self._name)
 
@@ -169,3 +172,14 @@ class BaseUtilitySensor(SensorEntity):
     def unit_of_measurement(self):
         """Return the unit of measurement."""
         return self._unit_of_measurement
+
+    @property
+    def last_reset(self):
+        """Return the timestamp of the last reset for resetting total sensors."""
+        if self._interval == MANUAL:
+            return None
+
+        if isinstance(self._last_reset, str):
+            return dt_util.parse_datetime(self._last_reset)
+
+        return self._last_reset

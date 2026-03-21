@@ -361,6 +361,8 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
 
         if last_state and last_state.state not in ["unknown", "unavailable", None]:
             self._state = float(last_state.state)
+            if last_state.attributes.get("last_reset") is not None:
+                self._last_reset = last_state.attributes.get("last_reset")
             if last_state.attributes.get("last_energy_reading") is not None:
                 self._last_energy_reading = float(
                     last_state.attributes.get("last_energy_reading")
@@ -503,6 +505,8 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
         if last_state and last_state.state not in ("unknown", "unavailable"):
             try:
                 self._state = Decimal(last_state.state)
+                if last_state.attributes.get("last_reset") is not None:
+                    self._last_reset = last_state.attributes.get("last_reset")
             except InvalidOperation:
                 _LOGGER.error(
                     "Invalid state value for restoration: %s", last_state.state
@@ -610,7 +614,7 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
     @property
     def state_class(self):
         """Return the state class of this device, from SensorStateClass."""
-        return SensorStateClass.MEASUREMENT
+        return SensorStateClass.TOTAL
 
     @property
     def should_poll(self):
