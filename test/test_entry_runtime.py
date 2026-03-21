@@ -230,9 +230,7 @@ async def test_setup_entry_removes_orphaned_energy_device(hass):
     entry = MockConfigEntry(
         domain=DOMAIN,
         version=3,
-        data=_entry_data(
-            power_sensor=None, energy_sensor="sensor.heat_pump_energy"
-        ),
+        data=_entry_data(power_sensor=None, energy_sensor="sensor.heat_pump_energy"),
         entry_id="entry-123",
     )
     entry.add_to_hass(hass)

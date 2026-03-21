@@ -129,9 +129,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-def _cleanup_orphaned_energy_device(
-    hass: HomeAssistant, entry: ConfigEntry
-) -> None:
+def _cleanup_orphaned_energy_device(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Remove the orphaned device left by the v0.9.3 identifier change.
 
     In v0.9.3, EnergyCostSensor used (DOMAIN, energy_sensor_id) as the
