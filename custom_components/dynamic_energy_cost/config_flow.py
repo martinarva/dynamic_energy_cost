@@ -30,9 +30,7 @@ def _entity_selector(*, domains: list[str], device_class: str | None = None):
     if device_class is not None:
         config["device_class"] = device_class
 
-    return selector.EntitySelector(
-        selector.EntitySelectorConfig(**config)
-    )
+    return selector.EntitySelector(selector.EntitySelectorConfig(**config))
 
 
 def _clean_optional_value(value: Any) -> Any:

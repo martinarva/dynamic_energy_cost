@@ -42,7 +42,13 @@ def test_entity_selector_omits_device_class_when_not_requested() -> None:
 def test_schema_uses_unfiltered_price_selector() -> None:
     """The price selector should not add an empty device class filter."""
     schema = _schema().schema
-    price_selector = schema[next(key for key in schema if getattr(key, "schema", None) == "electricity_price_sensor")]
+    price_selector = schema[
+        next(
+            key
+            for key in schema
+            if getattr(key, "schema", None) == "electricity_price_sensor"
+        )
+    ]
     serialized = price_selector.serialize()
 
     assert serialized == {
