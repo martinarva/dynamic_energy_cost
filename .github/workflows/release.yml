@@ -1,4 +1,4 @@
-# This workflow updates the manifest.yml
+# This workflow validates the manifest version and uploads the release zip.
 
 name: Release
 
@@ -8,22 +8,22 @@ on:
   workflow_dispatch:
 
 jobs:
-  update_manifest_file:
-    name: update manifest file
+  build_release_package:
+    name: Build release package
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      id-token: write
     steps:
       - name: ⤵️ Check out code from GitHub
         uses: actions/checkout@v5
-        
-      - name: 🔢 Adjust version number
-        shell: "bash"
+
+      - name: Validate manifest version against release tag
+        if: github.event_name == 'release'
         run: |
-          yq -i -o json '.version="${{ github.event.release.tag_name }}"' \
-            "${{ github.workspace }}/custom_components/dynamic_energy_cost/manifest.json"
-            
+          python scripts/check_release_version.py \
+            custom_components/dynamic_energy_cost/manifest.json \
+            "${{ github.event.release.tag_name }}"
+
       - name: 📦 Created zipped release package
         shell: "bash"
         run: |

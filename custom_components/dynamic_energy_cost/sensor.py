@@ -29,6 +29,12 @@ from .const import (
     WEEKLY,
     YEARLY,
 )
+from . import (
+    get_energy_cost_unique_id,
+    get_entry_config,
+    get_power_cost_unique_id,
+    get_realtime_unique_id,
+)
 from .entity import BaseUtilitySensor
 
 INTERVALS = [QUARTERLY, HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
@@ -41,6 +47,17 @@ def validate_is_number(value):
     if is_number(value):
         return value
     raise vol.Invalid("Value is not a number")
+
+
+def _state_to_float(state) -> float | None:
+    """Convert a Home Assistant state object to float if usable."""
+    if state is None or state.state in (None, "unknown", "unavailable"):
+        return None
+
+    try:
+        return float(state.state)
+    except (TypeError, ValueError):
+        return None
 
 
 async def register_entity_services():
@@ -66,11 +83,11 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Sensor platform setup based on user configuration."""
-    data = config_entry.data
+    data = get_entry_config(config_entry)
     electricity_price_sensor = data[ELECTRICITY_PRICE_SENSOR]
     sensors = []
 
-    if data[POWER_SENSOR]:
+    if data.get(POWER_SENSOR):
         # Setup power-based sensors
         power_sensor = data[POWER_SENSOR]
         real_time_cost_sensor = RealTimeCostSensor(
@@ -87,11 +104,17 @@ async def async_setup_entry(
         ]
         sensors.extend(utility_sensors)
 
-    if data[ENERGY_SENSOR]:
+    if data.get(ENERGY_SENSOR):
         # Setup energy-based sensors
         energy_sensor = data[ENERGY_SENSOR]
         utility_sensors = [
-            EnergyCostSensor(hass, energy_sensor, electricity_price_sensor, interval)
+            EnergyCostSensor(
+                hass,
+                config_entry,
+                energy_sensor,
+                electricity_price_sensor,
+                interval,
+            )
             for interval in INTERVALS
         ]
         sensors.extend(utility_sensors)
@@ -156,7 +179,7 @@ class RealTimeCostSensor(SensorEntity):
     @property
     def unique_id(self):
         """Return a unique identifier for this sensor."""
-        return f"{self._config_entry.entry_id}_{self._power_sensor_id}_real_time_cost"
+        return get_realtime_unique_id(self._config_entry.entry_id)
 
     @property
     def device_info(self):
@@ -192,31 +215,28 @@ class RealTimeCostSensor(SensorEntity):
         entity_id = event.data["entity_id"]
         new_state = event.data.get("new_state")
 
-        if new_state is None or new_state.state in ["unknown", "unavailable"]:
+        if new_state is None:
+            _LOGGER.warning("State of %s is missing, skipping update", entity_id)
+            return
+
+        if new_state.state in ["unknown", "unavailable"]:
             _LOGGER.warning(
                 "State of %s is '%s', skipping update", entity_id, new_state.state
             )
             return
 
-        electricity_price = self.hass.states.get(
-            self._electricity_price_sensor_id
-        ).state
-        power_usage = self.hass.states.get(self._power_sensor_id).state
+        electricity_price = _state_to_float(
+            self.hass.states.get(self._electricity_price_sensor_id)
+        )
+        power_usage = _state_to_float(self.hass.states.get(self._power_sensor_id))
 
-        if (
-            not electricity_price
-            or not power_usage
-            or electricity_price in ["unknown", "unavailable"]
-            or power_usage in ["unknown", "unavailable"]
-        ):
+        if electricity_price is None or power_usage is None:
             _LOGGER.warning(
                 "One or more sensor values are unavailable, skipping update"
             )
             return
 
         try:
-            electricity_price = float(electricity_price)
-            power_usage = float(power_usage)
             calculated_cost = round(electricity_price * (power_usage / 1000), 2)
             if calculated_cost != self._state:
                 self._state = Decimal(calculated_cost)
@@ -230,10 +250,12 @@ class RealTimeCostSensor(SensorEntity):
     async def async_added_to_hass(self):
         """Register callbacks when added to hass."""
         self._unit_of_measurement = f"{get_currency(self.hass)}/h"
-        async_track_state_change_event(
-            self.hass,
-            [self._electricity_price_sensor_id, self._power_sensor_id],
-            self.handle_state_change,
+        self.async_on_remove(
+            async_track_state_change_event(
+                self.hass,
+                [self._electricity_price_sensor_id, self._power_sensor_id],
+                self.handle_state_change,
+            )
         )
         _LOGGER.info(
             "Callbacks registered for %s and %s",
@@ -250,12 +272,14 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
     def __init__(
         self,
         hass: HomeAssistant,
+        config_entry: ConfigEntry,
         energy_sensor_id: SensorEntity,
         price_sensor_id: SensorEntity,
         interval: str,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(hass, interval)
+        self._config_entry = config_entry
         self._energy_sensor_id = energy_sensor_id
         self._price_sensor_id = price_sensor_id
         self._last_energy_reading = None
@@ -286,13 +310,13 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
     @property
     def unique_id(self):
         """Return a unique identifier for this sensor."""
-        return f"{self._price_sensor_id}_{self._energy_sensor_id}_{self._interval}_cost"
+        return get_energy_cost_unique_id(self._config_entry.entry_id, self._interval)
 
     @property
     def device_info(self):
         """Return device information to link this sensor with the integration."""
         return {
-            "identifiers": {(DOMAIN, self._energy_sensor_id)},
+            "identifiers": {(DOMAIN, self._config_entry.entry_id)},
             "name": self._device_name,
             "manufacturer": "Custom Integration",
         }
@@ -342,12 +366,16 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
 
         self.async_write_ha_state()
         # track energy sensor changes
-        async_track_state_change_event(
-            self.hass, self._energy_sensor_id, self._async_update_energy_event
+        self.async_on_remove(
+            async_track_state_change_event(
+                self.hass, self._energy_sensor_id, self._async_update_energy_event
+            )
         )
         # track also the price sensor changes for more accuracy
-        async_track_state_change_event(
-            self.hass, self._price_sensor_id, self._async_update_price_event
+        self.async_on_remove(
+            async_track_state_change_event(
+                self.hass, self._price_sensor_id, self._async_update_price_event
+            )
         )
         self.schedule_next_reset()
 
@@ -357,29 +385,26 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         """Handle price sensor state changes."""
         try:
             old_price_state = event.data.get("old_state")
-            energy_state = self.hass.states.get(
-                self._energy_sensor_id
-            )  # current energy readings
+            current_energy = _state_to_float(
+                self.hass.states.get(self._energy_sensor_id)
+            )
+            price = _state_to_float(old_price_state)
 
-            if (
-                not energy_state
-                or not old_price_state
-                or energy_state.state in ["unknown", "unavailable"]
-                or old_price_state.state in ["unknown", "unavailable"]
-            ):
+            if current_energy is None or price is None:
                 _LOGGER.debug("One or more sensors are unavailable. Skipping update.")
                 return
 
-            current_energy = float(energy_state.state)
-            price = float(old_price_state.state)
+            if self._cumulative_cost is None:
+                self._cumulative_cost = float(self._state)
 
-            if current_energy == 0:
+            if current_energy == 0 or self._last_energy_reading is None:
                 _LOGGER.debug(
-                    "Current energy reading is a perfect zero; assume a reset occured of the energy sensor."
+                    "Initializing energy baseline from current reading during price update."
                 )
-            # allow for decreasing energy readings to support energy feed-in
-            # and allow negative prices
-            elif self._last_energy_reading is not None:
+                self._last_energy_reading = current_energy
+            else:
+                # allow for decreasing energy readings to support energy feed-in
+                # and allow negative prices
                 energy_difference = current_energy - self._last_energy_reading
                 cost_increment = energy_difference * price
                 self._cumulative_cost += cost_increment
@@ -391,12 +416,7 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
                     f"Change in Energy price: cumulative cost {self._cumulative_cost} EUR and cumulative energy usage to {self._cumulative_energy} kWh"
                 )
 
-            else:
-                _LOGGER.debug(
-                    "No previous energy reading available; initializing with current reading."
-                )
-
-            self._last_energy_reading = current_energy  # Always update the last reading
+            self._last_energy_reading = current_energy
             self.async_write_ha_state()
 
         except Exception as e:
@@ -408,35 +428,29 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         """Handle energy sensor state changes."""
         """Update the energy costs using the latest sensor states, adding both incremental as decremental costs."""
         try:
-            energy_state = event.data.get("new_state")
-            price_state = self.hass.states.get(self._price_sensor_id)
+            current_energy = _state_to_float(event.data.get("new_state"))
+            price = _state_to_float(self.hass.states.get(self._price_sensor_id))
 
-            if (
-                not energy_state
-                or not price_state
-                or energy_state.state in ["unknown", "unavailable"]
-                or price_state.state in ["unknown", "unavailable"]
-            ):
+            if current_energy is None or price is None:
                 _LOGGER.debug("One or more sensors are unavailable. Skipping update.")
                 return
 
-            current_energy = float(energy_state.state)
-            price = float(price_state.state)
+            if self._cumulative_cost is None:
+                self._cumulative_cost = float(self._state)
 
             if current_energy == 0 or self._last_energy_reading is None:
                 _LOGGER.debug(
                     "No previous energy reading available or current reading is a perfect zero."
                 )
-                self._last_energy_reading = (
-                    current_energy  # Initialize with current reading
-                )
+                self._last_energy_reading = current_energy
                 return
 
             energy_difference = current_energy - self._last_energy_reading
             cost_increment = energy_difference * price
-            self._state = (
-                self._cumulative_cost + cost_increment
-            )  # set state to the cumulative cost + increment since last energy reading
+            self._cumulative_cost += cost_increment
+            self._cumulative_energy += energy_difference
+            self._state = self._cumulative_cost
+            self._last_energy_reading = current_energy
             _LOGGER.debug(
                 f"Energy cost incremented by {cost_increment} on top of {self._cumulative_cost}, total cost now {self._state} EUR"
             )
@@ -487,10 +501,12 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
         )
 
         try:
-            async_track_state_change_event(
-                self.hass,
-                [self._real_time_cost_sensor.entity_id],
-                self._handle_real_time_cost_update,
+            self.async_on_remove(
+                async_track_state_change_event(
+                    self.hass,
+                    [self._real_time_cost_sensor.entity_id],
+                    self._handle_real_time_cost_update,
+                )
             )
         except Exception as e:
             _LOGGER.error("Failed to track state change: %s", str(e))
@@ -504,12 +520,19 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
             return
 
         try:
+            if self._last_update is None:
+                self._last_update = now()
+                return
+
             current_cost = Decimal(new_state.state)
             _LOGGER.debug(
                 "Current cost retrieved from state: %s", current_cost
             )  # Log current cost
 
             time_difference = now() - self._last_update
+            if time_difference.total_seconds() <= 0:
+                self._last_update = now()
+                return
             hours_passed = Decimal(time_difference.total_seconds()) / Decimal(
                 3600
             )  # Convert time difference to hours as Decimal
@@ -534,7 +557,10 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
     @property
     def unique_id(self):
         """Return a unique identifier for this sensor."""
-        return f"{self._real_time_cost_sensor.unique_id}_{self._interval}"
+        return get_power_cost_unique_id(
+            self._real_time_cost_sensor._config_entry.entry_id,
+            self._interval,
+        )
 
     @property
     def device_info(self):
