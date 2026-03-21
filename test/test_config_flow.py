@@ -62,6 +62,67 @@ def test_schema_uses_unfiltered_price_selector() -> None:
     }
 
 
+def test_options_schema_relaxes_optional_selector_filters_for_existing_entries() -> None:
+    """The options schema does not enforce device class on existing optional fields."""
+    schema = _schema(
+        {
+            "integration_description": "Heat Pump",
+            "electricity_price_sensor": "sensor.electricity_price",
+            "power_sensor": "sensor.boiler_switch_0_device_power",
+        }
+    ).schema
+    power_selector = next(
+        validator.validators[1]
+        for key, validator in schema.items()
+        if getattr(key, "schema", None) == "power_sensor"
+    )
+
+    assert power_selector.serialize() == {
+        "selector": {
+            "entity": {
+                "domain": ["sensor"],
+                "multiple": False,
+                "reorder": False,
+            }
+        }
+    }
+
+
+async def test_options_flow_allows_switching_from_existing_power_sensor_to_energy_sensor(
+    hass,
+):
+    """An existing power sensor can be cleared when switching to energy mode."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Dynamic Energy Cost - Boiler",
+        data={
+            "integration_description": "Boiler",
+            "electricity_price_sensor": "sensor.electricity_price",
+            "power_sensor": "sensor.boiler_switch_0_device_power",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        user_input={
+            "integration_description": "Boiler",
+            "electricity_price_sensor": "sensor.electricity_price",
+            "power_sensor": None,
+            "energy_sensor": "sensor.switch_0_energy",
+        },
+    )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"] == {
+        "integration_description": "Boiler",
+        "electricity_price_sensor": "sensor.electricity_price",
+        "power_sensor": None,
+        "energy_sensor": "sensor.switch_0_energy",
+    }
+
+
 async def test_user_flow_creates_entry_with_power_sensor(hass):
     """The user flow accepts a valid power-sensor configuration."""
     result = await hass.config_entries.flow.async_init(

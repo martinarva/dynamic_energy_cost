@@ -21,7 +21,11 @@ from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, ENERGY_SENSOR, POWER_SENSOR
 _LOGGER = logging.getLogger(__name__)
 
 
-def _entity_selector(*, domains: list[str], device_class: str | None = None):
+def _entity_selector(
+    *,
+    domains: list[str],
+    device_class: str | None = None,
+):
     """Create an entity selector for a single entity."""
     config: dict[str, Any] = {
         "domain": domains,
@@ -75,6 +79,7 @@ def _validate_config(user_input: dict[str, Any]) -> dict[str, Any]:
 def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     """Build the shared config and options schema."""
     defaults = defaults or {}
+    relaxed_optional_selectors = bool(defaults)
 
     schema_dict = {
         vol.Required(
@@ -84,16 +89,17 @@ def _schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
         vol.Required(
             ELECTRICITY_PRICE_SENSOR,
             default=defaults.get(ELECTRICITY_PRICE_SENSOR),
-        ): _entity_selector(
-            domains=[SENSOR_DOMAIN, NUMBER_DOMAIN, INPUT_NUMBER_DOMAIN]
-        ),
+        ): _entity_selector(domains=[SENSOR_DOMAIN, NUMBER_DOMAIN, INPUT_NUMBER_DOMAIN]),
     }
 
     for key, device_class in ((POWER_SENSOR, "power"), (ENERGY_SENSOR, "energy")):
         default = _clean_optional_value(defaults.get(key, vol.UNDEFINED))
         schema_dict[vol.Optional(key, default=default)] = vol.Any(
             None,
-            _entity_selector(domains=[SENSOR_DOMAIN], device_class=device_class),
+            _entity_selector(
+                domains=[SENSOR_DOMAIN],
+                device_class=None if relaxed_optional_selectors else device_class,
+            ),
         )
 
     return vol.Schema(schema_dict)
