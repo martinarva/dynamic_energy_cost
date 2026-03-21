@@ -216,4 +216,7 @@ async def test_migrate_entry_updates_v2_interval_unique_ids_to_shared_ids(hass):
 
     assert await async_migrate_entry(hass, entry) is True
     assert entry.version == 3
-    assert registry.async_get_entity_id("sensor", DOMAIN, "entry-123_hourly_cost") == power.entity_id
+    assert (
+        registry.async_get_entity_id("sensor", DOMAIN, "entry-123_hourly_cost")
+        == power.entity_id
+    )

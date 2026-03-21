@@ -165,7 +165,9 @@ async def test_sensor_setup_handles_entries_missing_optional_keys(hass):
 
 async def test_mode_switch_reuses_shared_interval_unique_ids(hass):
     """Power and energy modes use the same interval unique IDs."""
-    power_entry = MockConfigEntry(domain=DOMAIN, entry_id="entry-123", data=_entry_data())
+    power_entry = MockConfigEntry(
+        domain=DOMAIN, entry_id="entry-123", data=_entry_data()
+    )
     energy_entry = MockConfigEntry(
         domain=DOMAIN,
         entry_id="entry-123",
@@ -184,7 +186,11 @@ async def test_mode_switch_reuses_shared_interval_unique_ids(hass):
 
     power_sensors = power_add.call_args.args[0]
     energy_sensors = energy_add.call_args.args[0]
-    power_interval_ids = {sensor.unique_id for sensor in power_sensors if not isinstance(sensor, RealTimeCostSensor)}
+    power_interval_ids = {
+        sensor.unique_id
+        for sensor in power_sensors
+        if not isinstance(sensor, RealTimeCostSensor)
+    }
     energy_interval_ids = {sensor.unique_id for sensor in energy_sensors}
 
     assert power_interval_ids == energy_interval_ids

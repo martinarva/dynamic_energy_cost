@@ -101,18 +101,24 @@ def _schema(
             default=defaults.get(ELECTRICITY_PRICE_SENSOR)
             if use_defaults
             else vol.UNDEFINED,
-        ): _entity_selector(domains=[SENSOR_DOMAIN, NUMBER_DOMAIN, INPUT_NUMBER_DOMAIN]),
+        ): _entity_selector(
+            domains=[SENSOR_DOMAIN, NUMBER_DOMAIN, INPUT_NUMBER_DOMAIN]
+        ),
     }
 
     for key, device_class in ((POWER_SENSOR, "power"), (ENERGY_SENSOR, "energy")):
         default = _clean_optional_value(defaults.get(key, vol.UNDEFINED))
         marker = vol.Optional(
             key,
-            default=default if use_defaults and default is not vol.UNDEFINED else vol.UNDEFINED,
+            default=default
+            if use_defaults and default is not vol.UNDEFINED
+            else vol.UNDEFINED,
         )
         schema_dict[marker] = vol.Any(
             None,
-            _filtered_entity_selector(domains=[SENSOR_DOMAIN], device_class=device_class)
+            _filtered_entity_selector(
+                domains=[SENSOR_DOMAIN], device_class=device_class
+            )
             if use_filtered_optional_selectors
             else _entity_selector(domains=[SENSOR_DOMAIN]),
         )
