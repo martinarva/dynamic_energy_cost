@@ -8,10 +8,15 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
+
+from .const import DAILY, DOMAIN, HOURLY, MANUAL, MONTHLY, QUARTERLY, WEEKLY, YEARLY
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [Platform.SENSOR]
+MIGRATION_VERSION = 2
+INTERVALS = [QUARTERLY, HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
 
 
 def get_entry_config(entry: ConfigEntry) -> dict[str, Any]:
@@ -19,9 +24,75 @@ def get_entry_config(entry: ConfigEntry) -> dict[str, Any]:
     return {**entry.data, **entry.options}
 
 
+def get_realtime_unique_id(entry_id: str) -> str:
+    """Return the stable realtime sensor unique ID."""
+    return f"{entry_id}_real_time_cost"
+
+
+def get_power_cost_unique_id(entry_id: str, interval: str) -> str:
+    """Return the stable power cost sensor unique ID."""
+    return f"{entry_id}_{interval}_power_cost"
+
+
+def get_energy_cost_unique_id(entry_id: str, interval: str) -> str:
+    """Return the stable energy cost sensor unique ID."""
+    return f"{entry_id}_{interval}_energy_cost"
+
+
+def get_legacy_unique_id_mappings(entry: ConfigEntry) -> dict[str, str]:
+    """Return legacy-to-stable unique ID mappings for the config entry."""
+    config = get_entry_config(entry)
+    mappings: dict[str, str] = {}
+
+    power_sensor = config.get("power_sensor")
+    if power_sensor:
+        legacy_realtime = f"{entry.entry_id}_{power_sensor}_real_time_cost"
+        stable_realtime = get_realtime_unique_id(entry.entry_id)
+        mappings[legacy_realtime] = stable_realtime
+        for interval in INTERVALS:
+            mappings[f"{legacy_realtime}_{interval}"] = get_power_cost_unique_id(
+                entry.entry_id, interval
+            )
+
+    energy_sensor = config.get("energy_sensor")
+    electricity_price_sensor = config.get("electricity_price_sensor")
+    if energy_sensor and electricity_price_sensor:
+        for interval in INTERVALS:
+            mappings[
+                f"{electricity_price_sensor}_{energy_sensor}_{interval}_cost"
+            ] = get_energy_cost_unique_id(entry.entry_id, interval)
+
+    return mappings
+
+
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload the config entry when options are updated."""
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate existing entities to stable entry-based unique IDs."""
+    if entry.version >= MIGRATION_VERSION:
+        return True
+
+    entity_registry = er.async_get(hass)
+    for old_unique_id, new_unique_id in get_legacy_unique_id_mappings(entry).items():
+        entity_id = entity_registry.async_get_entity_id("sensor", DOMAIN, old_unique_id)
+        if entity_id is None:
+            continue
+
+        if entity_registry.async_get_entity_id("sensor", DOMAIN, new_unique_id):
+            _LOGGER.warning(
+                "Skipping unique ID migration from %s to %s because target exists",
+                old_unique_id,
+                new_unique_id,
+            )
+            continue
+
+        entity_registry.async_update_entity(entity_id, new_unique_id=new_unique_id)
+
+    hass.config_entries.async_update_entry(entry, version=MIGRATION_VERSION)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):

@@ -53,6 +53,7 @@ async def test_energy_sensor_registers_state_listeners_for_cleanup(hass):
     """Energy sensor subscriptions are registered for entity cleanup."""
     sensor = EnergyCostSensor(
         hass,
+        Mock(entry_id="entry-1"),
         "sensor.heat_pump_energy",
         "sensor.electricity_price",
         HOURLY,

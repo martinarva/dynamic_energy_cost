@@ -29,7 +29,12 @@ from .const import (
     WEEKLY,
     YEARLY,
 )
-from . import get_entry_config
+from . import (
+    get_energy_cost_unique_id,
+    get_entry_config,
+    get_power_cost_unique_id,
+    get_realtime_unique_id,
+)
 from .entity import BaseUtilitySensor
 
 INTERVALS = [QUARTERLY, HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
@@ -92,7 +97,13 @@ async def async_setup_entry(
         # Setup energy-based sensors
         energy_sensor = data[ENERGY_SENSOR]
         utility_sensors = [
-            EnergyCostSensor(hass, energy_sensor, electricity_price_sensor, interval)
+            EnergyCostSensor(
+                hass,
+                config_entry,
+                energy_sensor,
+                electricity_price_sensor,
+                interval,
+            )
             for interval in INTERVALS
         ]
         sensors.extend(utility_sensors)
@@ -157,7 +168,7 @@ class RealTimeCostSensor(SensorEntity):
     @property
     def unique_id(self):
         """Return a unique identifier for this sensor."""
-        return f"{self._config_entry.entry_id}_{self._power_sensor_id}_real_time_cost"
+        return get_realtime_unique_id(self._config_entry.entry_id)
 
     @property
     def device_info(self):
@@ -253,12 +264,14 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
     def __init__(
         self,
         hass: HomeAssistant,
+        config_entry: ConfigEntry,
         energy_sensor_id: SensorEntity,
         price_sensor_id: SensorEntity,
         interval: str,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(hass, interval)
+        self._config_entry = config_entry
         self._energy_sensor_id = energy_sensor_id
         self._price_sensor_id = price_sensor_id
         self._last_energy_reading = None
@@ -289,7 +302,7 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
     @property
     def unique_id(self):
         """Return a unique identifier for this sensor."""
-        return f"{self._price_sensor_id}_{self._energy_sensor_id}_{self._interval}_cost"
+        return get_energy_cost_unique_id(self._config_entry.entry_id, self._interval)
 
     @property
     def device_info(self):
@@ -543,7 +556,10 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
     @property
     def unique_id(self):
         """Return a unique identifier for this sensor."""
-        return f"{self._real_time_cost_sensor.unique_id}_{self._interval}"
+        return get_power_cost_unique_id(
+            self._real_time_cost_sensor._config_entry.entry_id,
+            self._interval,
+        )
 
     @property
     def device_info(self):
