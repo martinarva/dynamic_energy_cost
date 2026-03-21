@@ -87,7 +87,7 @@ async def async_setup_entry(
     electricity_price_sensor = data[ELECTRICITY_PRICE_SENSOR]
     sensors = []
 
-    if data[POWER_SENSOR]:
+    if data.get(POWER_SENSOR):
         # Setup power-based sensors
         power_sensor = data[POWER_SENSOR]
         real_time_cost_sensor = RealTimeCostSensor(
@@ -104,7 +104,7 @@ async def async_setup_entry(
         ]
         sensors.extend(utility_sensors)
 
-    if data[ENERGY_SENSOR]:
+    if data.get(ENERGY_SENSOR):
         # Setup energy-based sensors
         energy_sensor = data[ENERGY_SENSOR]
         utility_sensors = [
@@ -215,7 +215,11 @@ class RealTimeCostSensor(SensorEntity):
         entity_id = event.data["entity_id"]
         new_state = event.data.get("new_state")
 
-        if new_state is None or new_state.state in ["unknown", "unavailable"]:
+        if new_state is None:
+            _LOGGER.warning("State of %s is missing, skipping update", entity_id)
+            return
+
+        if new_state.state in ["unknown", "unavailable"]:
             _LOGGER.warning(
                 "State of %s is '%s', skipping update", entity_id, new_state.state
             )
@@ -312,7 +316,7 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
     def device_info(self):
         """Return device information to link this sensor with the integration."""
         return {
-            "identifiers": {(DOMAIN, self._energy_sensor_id)},
+            "identifiers": {(DOMAIN, self._config_entry.entry_id)},
             "name": self._device_name,
             "manufacturer": "Custom Integration",
         }
@@ -396,12 +400,9 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
                     "Initializing energy baseline from current reading during price update."
                 )
                 self._last_energy_reading = current_energy
-            # allow for decreasing energy readings to support energy feed-in
-            # and allow negative prices
-            elif current_energy < self._last_energy_reading:
-                _LOGGER.debug("Energy reading decreased; resetting baseline to %s", current_energy)
-                self._last_energy_reading = current_energy
             else:
+                # allow for decreasing energy readings to support energy feed-in
+                # and allow negative prices
                 energy_difference = current_energy - self._last_energy_reading
                 cost_increment = energy_difference * price
                 self._cumulative_cost += cost_increment
@@ -439,11 +440,6 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
                 _LOGGER.debug(
                     "No previous energy reading available or current reading is a perfect zero."
                 )
-                self._last_energy_reading = current_energy
-                return
-
-            if current_energy < self._last_energy_reading:
-                _LOGGER.debug("Energy sensor reset detected; using new baseline %s", current_energy)
                 self._last_energy_reading = current_energy
                 return
 

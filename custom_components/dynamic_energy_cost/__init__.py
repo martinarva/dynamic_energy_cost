@@ -41,32 +41,42 @@ def get_energy_cost_unique_id(entry_id: str, interval: str) -> str:
 
 def get_legacy_unique_id_mappings(entry: ConfigEntry) -> dict[str, str]:
     """Return legacy-to-stable unique ID mappings for the config entry."""
-    config = get_entry_config(entry)
     mappings: dict[str, str] = {}
 
-    power_sensor = config.get("power_sensor")
-    if power_sensor:
-        legacy_realtime = f"{entry.entry_id}_{power_sensor}_real_time_cost"
-        stable_realtime = get_realtime_unique_id(entry.entry_id)
-        mappings[legacy_realtime] = stable_realtime
-        for interval in INTERVALS:
-            mappings[f"{legacy_realtime}_{interval}"] = get_power_cost_unique_id(
-                entry.entry_id, interval
-            )
+    configs = [entry.data, entry.options, get_entry_config(entry)]
+    stable_realtime = get_realtime_unique_id(entry.entry_id)
 
-    energy_sensor = config.get("energy_sensor")
-    electricity_price_sensor = config.get("electricity_price_sensor")
-    if energy_sensor and electricity_price_sensor:
-        for interval in INTERVALS:
-            mappings[
-                f"{electricity_price_sensor}_{energy_sensor}_{interval}_cost"
-            ] = get_energy_cost_unique_id(entry.entry_id, interval)
+    for config in configs:
+        if not config:
+            continue
+
+        power_sensor = config.get("power_sensor")
+        if power_sensor:
+            legacy_realtime = f"{entry.entry_id}_{power_sensor}_real_time_cost"
+            mappings[legacy_realtime] = stable_realtime
+            for interval in INTERVALS:
+                mappings[f"{legacy_realtime}_{interval}"] = get_power_cost_unique_id(
+                    entry.entry_id, interval
+                )
+
+        energy_sensor = config.get("energy_sensor")
+        electricity_price_sensor = config.get("electricity_price_sensor")
+        if energy_sensor and electricity_price_sensor:
+            for interval in INTERVALS:
+                mappings[
+                    f"{electricity_price_sensor}_{energy_sensor}_{interval}_cost"
+                ] = get_energy_cost_unique_id(entry.entry_id, interval)
 
     return mappings
 
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload the config entry when options are updated."""
+    config = get_entry_config(entry)
+    title = f"Dynamic Energy Cost - {config.get('integration_description', 'Unnamed')}"
+    if entry.title != title:
+        hass.config_entries.async_update_entry(entry, title=title)
+
     await hass.config_entries.async_reload(entry.entry_id)
 
 
@@ -76,6 +86,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return True
 
     entity_registry = er.async_get(hass)
+    skipped_migrations = False
     for old_unique_id, new_unique_id in get_legacy_unique_id_mappings(entry).items():
         entity_id = entity_registry.async_get_entity_id("sensor", DOMAIN, old_unique_id)
         if entity_id is None:
@@ -87,11 +98,13 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 old_unique_id,
                 new_unique_id,
             )
+            skipped_migrations = True
             continue
 
         entity_registry.async_update_entity(entity_id, new_unique_id=new_unique_id)
 
-    hass.config_entries.async_update_entry(entry, version=MIGRATION_VERSION)
+    if not skipped_migrations:
+        hass.config_entries.async_update_entry(entry, version=MIGRATION_VERSION)
     return True
 
 
