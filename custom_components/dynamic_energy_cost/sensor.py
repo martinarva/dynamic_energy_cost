@@ -311,7 +311,9 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         friendly_name = " ".join(friendly_name_parts).title()
 
         self._base_name = friendly_name
-        self._name = f"{self._base_name} {interval_display_name(self._interval)} Energy Cost"
+        self._name = (
+            f"{self._base_name} {interval_display_name(self._interval)} Energy Cost"
+        )
         self._device_name = friendly_name + " Dynamic Energy Cost"
 
     @property
