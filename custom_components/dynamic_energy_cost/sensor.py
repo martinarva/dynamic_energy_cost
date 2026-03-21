@@ -41,6 +41,14 @@ INTERVALS = [QUARTERLY, HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
 _LOGGER = logging.getLogger(__name__)
 
 
+def interval_display_name(interval: str) -> str:
+    """Return a user-facing label for an interval."""
+    if interval == QUARTERLY:
+        return "15-Minute"
+
+    return interval.replace("_", " ").title()
+
+
 def validate_is_number(value):
     """Validate value is a number."""
     if is_number(value):
@@ -303,7 +311,7 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         friendly_name = " ".join(friendly_name_parts).title()
 
         self._base_name = friendly_name
-        self._name = f"{self._base_name} {self._interval.capitalize()} Energy Cost"
+        self._name = f"{self._base_name} {interval_display_name(self._interval)} Energy Cost"
         self._device_name = friendly_name + " Dynamic Energy Cost"
 
     @property
@@ -476,7 +484,7 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
         base_name = real_time_cost_sensor.name.replace(
             " Real Time Energy Cost", ""
         ).strip()
-        self._name = f"{base_name} {interval.title()} Energy Cost"
+        self._name = f"{base_name} {interval_display_name(interval)} Energy Cost"
 
     async def async_added_to_hass(self):
         """Restore state and set up updates when added to Home Assistant."""
