@@ -49,6 +49,17 @@ def validate_is_number(value):
     raise vol.Invalid("Value is not a number")
 
 
+def _state_to_float(state) -> float | None:
+    """Convert a Home Assistant state object to float if usable."""
+    if state is None or state.state in (None, "unknown", "unavailable"):
+        return None
+
+    try:
+        return float(state.state)
+    except (TypeError, ValueError):
+        return None
+
+
 async def register_entity_services():
     """Register custom services for energy cost sensors."""
     platform = entity_platform.async_get_current_platform()
@@ -210,25 +221,18 @@ class RealTimeCostSensor(SensorEntity):
             )
             return
 
-        electricity_price = self.hass.states.get(
-            self._electricity_price_sensor_id
-        ).state
-        power_usage = self.hass.states.get(self._power_sensor_id).state
+        electricity_price = _state_to_float(
+            self.hass.states.get(self._electricity_price_sensor_id)
+        )
+        power_usage = _state_to_float(self.hass.states.get(self._power_sensor_id))
 
-        if (
-            not electricity_price
-            or not power_usage
-            or electricity_price in ["unknown", "unavailable"]
-            or power_usage in ["unknown", "unavailable"]
-        ):
+        if electricity_price is None or power_usage is None:
             _LOGGER.warning(
                 "One or more sensor values are unavailable, skipping update"
             )
             return
 
         try:
-            electricity_price = float(electricity_price)
-            power_usage = float(power_usage)
             calculated_cost = round(electricity_price * (power_usage / 1000), 2)
             if calculated_cost != self._state:
                 self._state = Decimal(calculated_cost)
@@ -377,29 +381,27 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         """Handle price sensor state changes."""
         try:
             old_price_state = event.data.get("old_state")
-            energy_state = self.hass.states.get(
-                self._energy_sensor_id
-            )  # current energy readings
+            current_energy = _state_to_float(self.hass.states.get(self._energy_sensor_id))
+            price = _state_to_float(old_price_state)
 
-            if (
-                not energy_state
-                or not old_price_state
-                or energy_state.state in ["unknown", "unavailable"]
-                or old_price_state.state in ["unknown", "unavailable"]
-            ):
+            if current_energy is None or price is None:
                 _LOGGER.debug("One or more sensors are unavailable. Skipping update.")
                 return
 
-            current_energy = float(energy_state.state)
-            price = float(old_price_state.state)
+            if self._cumulative_cost is None:
+                self._cumulative_cost = float(self._state)
 
-            if current_energy == 0:
+            if current_energy == 0 or self._last_energy_reading is None:
                 _LOGGER.debug(
-                    "Current energy reading is a perfect zero; assume a reset occured of the energy sensor."
+                    "Initializing energy baseline from current reading during price update."
                 )
+                self._last_energy_reading = current_energy
             # allow for decreasing energy readings to support energy feed-in
             # and allow negative prices
-            elif self._last_energy_reading is not None:
+            elif current_energy < self._last_energy_reading:
+                _LOGGER.debug("Energy reading decreased; resetting baseline to %s", current_energy)
+                self._last_energy_reading = current_energy
+            else:
                 energy_difference = current_energy - self._last_energy_reading
                 cost_increment = energy_difference * price
                 self._cumulative_cost += cost_increment
@@ -411,12 +413,7 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
                     f"Change in Energy price: cumulative cost {self._cumulative_cost} EUR and cumulative energy usage to {self._cumulative_energy} kWh"
                 )
 
-            else:
-                _LOGGER.debug(
-                    "No previous energy reading available; initializing with current reading."
-                )
-
-            self._last_energy_reading = current_energy  # Always update the last reading
+            self._last_energy_reading = current_energy
             self.async_write_ha_state()
 
         except Exception as e:
@@ -428,35 +425,34 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         """Handle energy sensor state changes."""
         """Update the energy costs using the latest sensor states, adding both incremental as decremental costs."""
         try:
-            energy_state = event.data.get("new_state")
-            price_state = self.hass.states.get(self._price_sensor_id)
+            current_energy = _state_to_float(event.data.get("new_state"))
+            price = _state_to_float(self.hass.states.get(self._price_sensor_id))
 
-            if (
-                not energy_state
-                or not price_state
-                or energy_state.state in ["unknown", "unavailable"]
-                or price_state.state in ["unknown", "unavailable"]
-            ):
+            if current_energy is None or price is None:
                 _LOGGER.debug("One or more sensors are unavailable. Skipping update.")
                 return
 
-            current_energy = float(energy_state.state)
-            price = float(price_state.state)
+            if self._cumulative_cost is None:
+                self._cumulative_cost = float(self._state)
 
             if current_energy == 0 or self._last_energy_reading is None:
                 _LOGGER.debug(
                     "No previous energy reading available or current reading is a perfect zero."
                 )
-                self._last_energy_reading = (
-                    current_energy  # Initialize with current reading
-                )
+                self._last_energy_reading = current_energy
+                return
+
+            if current_energy < self._last_energy_reading:
+                _LOGGER.debug("Energy sensor reset detected; using new baseline %s", current_energy)
+                self._last_energy_reading = current_energy
                 return
 
             energy_difference = current_energy - self._last_energy_reading
             cost_increment = energy_difference * price
-            self._state = (
-                self._cumulative_cost + cost_increment
-            )  # set state to the cumulative cost + increment since last energy reading
+            self._cumulative_cost += cost_increment
+            self._cumulative_energy += energy_difference
+            self._state = self._cumulative_cost
+            self._last_energy_reading = current_energy
             _LOGGER.debug(
                 f"Energy cost incremented by {cost_increment} on top of {self._cumulative_cost}, total cost now {self._state} EUR"
             )
@@ -526,12 +522,19 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
             return
 
         try:
+            if self._last_update is None:
+                self._last_update = now()
+                return
+
             current_cost = Decimal(new_state.state)
             _LOGGER.debug(
                 "Current cost retrieved from state: %s", current_cost
             )  # Log current cost
 
             time_difference = now() - self._last_update
+            if time_difference.total_seconds() <= 0:
+                self._last_update = now()
+                return
             hours_passed = Decimal(time_difference.total_seconds()) / Decimal(
                 3600
             )  # Convert time difference to hours as Decimal
