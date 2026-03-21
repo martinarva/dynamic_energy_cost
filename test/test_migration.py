@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.dynamic_energy_cost import async_migrate_entry
@@ -220,3 +220,105 @@ async def test_migrate_entry_updates_v2_interval_unique_ids_to_shared_ids(hass):
         registry.async_get_entity_id("sensor", DOMAIN, "entry-123_hourly_cost")
         == power.entity_id
     )
+
+
+async def test_migrate_entry_removes_orphaned_energy_device(hass):
+    """Migration removes the old device created with the energy_sensor_id identifier."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=1,
+        data=_entry_data(power_sensor=None),
+        entry_id="entry-123",
+    )
+    entry.add_to_hass(hass)
+
+    device_registry = dr.async_get(hass)
+    # Simulate the old device that v0.9.3 EnergyCostSensor created
+    old_device = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, "sensor.heat_pump_energy")},
+        name="Heat Pump Dynamic Energy Cost",
+        manufacturer="Custom Integration",
+    )
+
+    entity_registry = er.async_get(hass)
+    entity_registry.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        "sensor.electricity_price_sensor.heat_pump_energy_hourly_cost",
+        config_entry=entry,
+    )
+
+    assert await async_migrate_entry(hass, entry) is True
+    assert device_registry.async_get(old_device.id) is None
+
+
+async def test_migrate_entry_skips_device_removal_when_entities_remain(hass):
+    """Migration keeps the old device if it still has entities attached."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=1,
+        data=_entry_data(power_sensor=None),
+        entry_id="entry-123",
+    )
+    entry.add_to_hass(hass)
+
+    device_registry = dr.async_get(hass)
+    old_device = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, "sensor.heat_pump_energy")},
+        name="Heat Pump Dynamic Energy Cost",
+        manufacturer="Custom Integration",
+    )
+
+    entity_registry = er.async_get(hass)
+    # Legacy entity still linked to the old device
+    entity_registry.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        "sensor.electricity_price_sensor.heat_pump_energy_hourly_cost",
+        config_entry=entry,
+        device_id=old_device.id,
+    )
+
+    assert await async_migrate_entry(hass, entry) is True
+    # Device should survive because it still has an entity
+    assert device_registry.async_get(old_device.id) is not None
+
+
+async def test_migrate_entry_cleans_up_orphan_from_original_data_after_options_change(
+    hass,
+):
+    """Migration finds the orphan using the original data value after options changed."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=1,
+        entry_id="entry-123",
+        data=_entry_data(power_sensor=None, energy_sensor="sensor.old_energy"),
+        options={"energy_sensor": "sensor.new_energy"},
+    )
+    entry.add_to_hass(hass)
+
+    device_registry = dr.async_get(hass)
+    old_device = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, "sensor.old_energy")},
+        name="Heat Pump Dynamic Energy Cost",
+        manufacturer="Custom Integration",
+    )
+
+    assert await async_migrate_entry(hass, entry) is True
+    assert device_registry.async_get(old_device.id) is None
+
+
+async def test_migrate_entry_no_crash_when_no_orphaned_device(hass):
+    """Migration completes cleanly when there is no old device to remove."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=1,
+        data=_entry_data(energy_sensor=None),
+        entry_id="entry-123",
+    )
+    entry.add_to_hass(hass)
+
+    assert await async_migrate_entry(hass, entry) is True
