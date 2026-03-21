@@ -8,7 +8,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from .const import DAILY, DOMAIN, HOURLY, MANUAL, MONTHLY, QUARTERLY, WEEKLY, YEARLY
 
@@ -124,12 +124,62 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     if not skipped_migrations:
         hass.config_entries.async_update_entry(entry, version=MIGRATION_VERSION)
+
+    _cleanup_orphaned_energy_device(hass, entry)
     return True
+
+
+def _cleanup_orphaned_energy_device(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:
+    """Remove the orphaned device left by the v0.9.3 identifier change.
+
+    In v0.9.3, EnergyCostSensor used (DOMAIN, energy_sensor_id) as the
+    device identifier.  Current code uses (DOMAIN, entry_id) for all
+    sensors, so the old device becomes an empty orphan after upgrade.
+
+    Called from both async_migrate_entry (for fresh upgrades) and
+    async_setup_entry (for installations that already migrated).
+    """
+    # Check both data and options: the user may have changed the energy
+    # sensor via options, but the orphan was created with the original value.
+    candidates: set[str] = set()
+    for source in (entry.data, entry.options):
+        sensor = source.get("energy_sensor") if source else None
+        if sensor:
+            candidates.add(sensor)
+
+    if not candidates:
+        return
+
+    device_registry = dr.async_get(hass)
+    entity_registry = er.async_get(hass)
+    for energy_sensor in candidates:
+        old_device = device_registry.async_get_device(
+            identifiers={(DOMAIN, energy_sensor)}
+        )
+        if old_device is None:
+            continue
+
+        if er.async_entries_for_device(entity_registry, old_device.id):
+            _LOGGER.debug(
+                "Skipping removal of device %s — it still has entities",
+                old_device.id,
+            )
+            continue
+
+        device_registry.async_remove_device(old_device.id)
+        _LOGGER.info(
+            "Removed orphaned device %s (old energy sensor identifier: %s)",
+            old_device.id,
+            energy_sensor,
+        )
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up Dynamic Energy Cost from a config entry."""
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+    _cleanup_orphaned_energy_device(hass, entry)
 
     _LOGGER.info(
         "Starting setup of Dynamic Energy Cost component, entry config: %s",

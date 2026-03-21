@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from custom_components.dynamic_energy_cost import async_reload_entry, async_setup_entry
 from custom_components.dynamic_energy_cost.const import DOMAIN
@@ -223,3 +223,33 @@ async def test_async_unload_entry_unloads_sensor_platform(hass):
         assert await async_unload_entry(hass, entry) is True
 
     unload_platforms.assert_awaited_once_with(entry, ["sensor"])
+
+
+async def test_setup_entry_removes_orphaned_energy_device(hass):
+    """Setup cleans up orphaned devices from the v0.9.3 identifier change."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=3,
+        data=_entry_data(
+            power_sensor=None, energy_sensor="sensor.heat_pump_energy"
+        ),
+        entry_id="entry-123",
+    )
+    entry.add_to_hass(hass)
+
+    device_registry = dr.async_get(hass)
+    old_device = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, "sensor.heat_pump_energy")},
+        name="Heat Pump Dynamic Energy Cost",
+        manufacturer="Custom Integration",
+    )
+
+    with patch.object(
+        hass.config_entries,
+        "async_forward_entry_setups",
+        AsyncMock(return_value=True),
+    ):
+        assert await async_setup_entry(hass, entry) is True
+
+    assert device_registry.async_get(old_device.id) is None
