@@ -15,7 +15,7 @@ from .const import DAILY, DOMAIN, HOURLY, MANUAL, MONTHLY, QUARTERLY, WEEKLY, YE
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [Platform.SENSOR]
-MIGRATION_VERSION = 2
+MIGRATION_VERSION = 3
 INTERVALS = [QUARTERLY, HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
 
 
@@ -29,13 +29,18 @@ def get_realtime_unique_id(entry_id: str) -> str:
     return f"{entry_id}_real_time_cost"
 
 
+def get_interval_cost_unique_id(entry_id: str, interval: str) -> str:
+    """Return the stable shared interval sensor unique ID."""
+    return f"{entry_id}_{interval}_cost"
+
+
 def get_power_cost_unique_id(entry_id: str, interval: str) -> str:
-    """Return the stable power cost sensor unique ID."""
+    """Return the v2 power cost sensor unique ID."""
     return f"{entry_id}_{interval}_power_cost"
 
 
 def get_energy_cost_unique_id(entry_id: str, interval: str) -> str:
-    """Return the stable energy cost sensor unique ID."""
+    """Return the v2 energy cost sensor unique ID."""
     return f"{entry_id}_{interval}_energy_cost"
 
 
@@ -58,6 +63,9 @@ def get_legacy_unique_id_mappings(entry: ConfigEntry) -> dict[str, str]:
                 mappings[f"{legacy_realtime}_{interval}"] = get_power_cost_unique_id(
                     entry.entry_id, interval
                 )
+                mappings[get_power_cost_unique_id(entry.entry_id, interval)] = (
+                    get_interval_cost_unique_id(entry.entry_id, interval)
+                )
 
         energy_sensor = config.get("energy_sensor")
         electricity_price_sensor = config.get("electricity_price_sensor")
@@ -66,6 +74,9 @@ def get_legacy_unique_id_mappings(entry: ConfigEntry) -> dict[str, str]:
                 mappings[
                     f"{electricity_price_sensor}_{energy_sensor}_{interval}_cost"
                 ] = get_energy_cost_unique_id(entry.entry_id, interval)
+                mappings[get_energy_cost_unique_id(entry.entry_id, interval)] = (
+                    get_interval_cost_unique_id(entry.entry_id, interval)
+                )
 
     return mappings
 
@@ -76,6 +87,14 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     title = f"Dynamic Energy Cost - {config.get('integration_description', 'Unnamed')}"
     if entry.title != title:
         hass.config_entries.async_update_entry(entry, title=title)
+
+    entity_registry = er.async_get(hass)
+    if not config.get("power_sensor"):
+        realtime_entity_id = entity_registry.async_get_entity_id(
+            "sensor", DOMAIN, get_realtime_unique_id(entry.entry_id)
+        )
+        if realtime_entity_id is not None:
+            entity_registry.async_remove(realtime_entity_id)
 
     await hass.config_entries.async_reload(entry.entry_id)
 

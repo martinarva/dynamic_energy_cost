@@ -6,6 +6,8 @@ from unittest.mock import AsyncMock, Mock, patch
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from homeassistant.helpers import entity_registry as er
+
 from custom_components.dynamic_energy_cost import async_reload_entry, async_setup_entry
 from custom_components.dynamic_energy_cost.const import DOMAIN
 from custom_components.dynamic_energy_cost.sensor import (
@@ -78,6 +80,36 @@ async def test_reload_listener_updates_title_from_latest_description(hass):
     reload_entry.assert_awaited_once_with(entry.entry_id)
 
 
+async def test_reload_listener_removes_obsolete_realtime_entity_when_switching_to_energy(
+    hass,
+):
+    """Switching away from power mode removes the old realtime entity."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Dynamic Energy Cost - Heat Pump",
+        entry_id="entry-123",
+        data=_entry_data(),
+        options={"power_sensor": None, "energy_sensor": "sensor.heat_pump_energy"},
+    )
+    entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    realtime = registry.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        "entry-123_real_time_cost",
+        config_entry=entry,
+        suggested_object_id="heat_pump_real_time_energy_cost",
+    )
+
+    with patch.object(
+        hass.config_entries, "async_reload", AsyncMock(return_value=True)
+    ) as reload_entry:
+        await async_reload_entry(hass, entry)
+
+    assert registry.async_get(realtime.entity_id) is None
+    reload_entry.assert_awaited_once_with(entry.entry_id)
+
+
 async def test_sensor_setup_uses_options_over_data(hass):
     """Runtime sensor setup prefers options over original config data."""
     entry = MockConfigEntry(
@@ -105,6 +137,7 @@ async def test_sensor_setup_uses_options_over_data(hass):
     assert all(isinstance(sensor, EnergyCostSensor) for sensor in sensors)
     assert not any(isinstance(sensor, RealTimeCostSensor) for sensor in sensors)
     assert len(sensors) == 7
+    assert all(sensor.unique_id.endswith("_cost") for sensor in sensors)
 
 
 async def test_sensor_setup_handles_entries_missing_optional_keys(hass):
@@ -128,6 +161,33 @@ async def test_sensor_setup_handles_entries_missing_optional_keys(hass):
 
     sensors = async_add_entities.call_args.args[0]
     assert any(isinstance(sensor, RealTimeCostSensor) for sensor in sensors)
+
+
+async def test_mode_switch_reuses_shared_interval_unique_ids(hass):
+    """Power and energy modes use the same interval unique IDs."""
+    power_entry = MockConfigEntry(domain=DOMAIN, entry_id="entry-123", data=_entry_data())
+    energy_entry = MockConfigEntry(
+        domain=DOMAIN,
+        entry_id="entry-123",
+        data=_entry_data(power_sensor=None, energy_sensor="sensor.heat_pump_energy"),
+    )
+
+    power_add = Mock()
+    energy_add = Mock()
+
+    with patch(
+        "custom_components.dynamic_energy_cost.sensor.register_entity_services",
+        AsyncMock(),
+    ):
+        await sensor_async_setup_entry(hass, power_entry, power_add)
+        await sensor_async_setup_entry(hass, energy_entry, energy_add)
+
+    power_sensors = power_add.call_args.args[0]
+    energy_sensors = energy_add.call_args.args[0]
+    power_interval_ids = {sensor.unique_id for sensor in power_sensors if not isinstance(sensor, RealTimeCostSensor)}
+    energy_interval_ids = {sensor.unique_id for sensor in energy_sensors}
+
+    assert power_interval_ids == energy_interval_ids
 
 
 async def test_async_setup_entry_returns_false_when_forward_fails(hass):

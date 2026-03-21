@@ -30,9 +30,8 @@ from .const import (
     YEARLY,
 )
 from . import (
-    get_energy_cost_unique_id,
     get_entry_config,
-    get_power_cost_unique_id,
+    get_interval_cost_unique_id,
     get_realtime_unique_id,
 )
 from .entity import BaseUtilitySensor
@@ -310,7 +309,7 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
     @property
     def unique_id(self):
         """Return a unique identifier for this sensor."""
-        return get_energy_cost_unique_id(self._config_entry.entry_id, self._interval)
+        return get_interval_cost_unique_id(self._config_entry.entry_id, self._interval)
 
     @property
     def device_info(self):
@@ -557,7 +556,7 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
     @property
     def unique_id(self):
         """Return a unique identifier for this sensor."""
-        return get_power_cost_unique_id(
+        return get_interval_cost_unique_id(
             self._real_time_cost_sensor._config_entry.entry_id,
             self._interval,
         )

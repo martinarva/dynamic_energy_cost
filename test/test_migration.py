@@ -28,7 +28,10 @@ def _entry_data(**overrides):
 async def test_migrate_entry_updates_legacy_unique_ids(hass):
     """Migration keeps existing entity IDs while moving to stable unique IDs."""
     entry = MockConfigEntry(
-        domain=DOMAIN, version=1, data=_entry_data(), entry_id="entry-123"
+        domain=DOMAIN,
+        version=1,
+        data=_entry_data(energy_sensor=None),
+        entry_id="entry-123",
     )
     entry.add_to_hass(hass)
     registry = er.async_get(hass)
@@ -47,28 +50,16 @@ async def test_migrate_entry_updates_legacy_unique_ids(hass):
         config_entry=entry,
         suggested_object_id="heat_pump_hourly_energy_cost",
     )
-    energy = registry.async_get_or_create(
-        "sensor",
-        DOMAIN,
-        "sensor.electricity_price_sensor.heat_pump_energy_hourly_cost",
-        config_entry=entry,
-        suggested_object_id="heat_pump_hourly_energy_cost_2",
-    )
-
     assert await async_migrate_entry(hass, entry) is True
 
-    assert entry.version == 2
+    assert entry.version == 3
     assert (
         registry.async_get_entity_id("sensor", DOMAIN, "entry-123_real_time_cost")
         == realtime.entity_id
     )
     assert (
-        registry.async_get_entity_id("sensor", DOMAIN, "entry-123_hourly_power_cost")
+        registry.async_get_entity_id("sensor", DOMAIN, "entry-123_hourly_cost")
         == power.entity_id
-    )
-    assert (
-        registry.async_get_entity_id("sensor", DOMAIN, "entry-123_hourly_energy_cost")
-        == energy.entity_id
     )
 
 
@@ -92,8 +83,8 @@ async def test_sensors_use_entry_based_unique_ids(hass):
     power_sensor = PowerCostSensor(hass, realtime_sensor, HOURLY)
 
     assert realtime_sensor.unique_id == "entry-123_real_time_cost"
-    assert energy_sensor.unique_id == "entry-123_hourly_energy_cost"
-    assert power_sensor.unique_id == "entry-123_hourly_power_cost"
+    assert energy_sensor.unique_id == "entry-123_hourly_cost"
+    assert power_sensor.unique_id == "entry-123_hourly_cost"
 
 
 async def test_migrate_entry_skips_collision_without_breaking_existing_entity(hass):
@@ -199,6 +190,30 @@ async def test_migrate_entry_includes_legacy_energy_ids_from_original_data_when_
 
     assert await async_migrate_entry(hass, entry) is True
     assert (
-        registry.async_get_entity_id("sensor", DOMAIN, "entry-123_hourly_energy_cost")
+        registry.async_get_entity_id("sensor", DOMAIN, "entry-123_hourly_cost")
         == legacy.entity_id
     )
+
+
+async def test_migrate_entry_updates_v2_interval_unique_ids_to_shared_ids(hass):
+    """Migration upgrades v2 mode-specific interval IDs to shared IDs."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=2,
+        data=_entry_data(power_sensor="sensor.heat_pump_power", energy_sensor=None),
+        entry_id="entry-123",
+    )
+    entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+
+    power = registry.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        "entry-123_hourly_power_cost",
+        config_entry=entry,
+        suggested_object_id="heat_pump_hourly_energy_cost",
+    )
+
+    assert await async_migrate_entry(hass, entry) is True
+    assert entry.version == 3
+    assert registry.async_get_entity_id("sensor", DOMAIN, "entry-123_hourly_cost") == power.entity_id

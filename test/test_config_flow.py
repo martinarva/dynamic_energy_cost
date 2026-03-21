@@ -9,7 +9,11 @@ from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 import voluptuous as vol
 
-from custom_components.dynamic_energy_cost.config_flow import _entity_selector, _schema
+from custom_components.dynamic_energy_cost.config_flow import (
+    _entity_selector,
+    _filtered_entity_selector,
+    _schema,
+)
 from custom_components.dynamic_energy_cost.const import DOMAIN
 
 
@@ -40,6 +44,25 @@ def test_entity_selector_omits_device_class_when_not_requested() -> None:
     }
 
 
+def test_filtered_entity_selector_uses_filter_syntax() -> None:
+    """Filtered selectors should use the modern filter schema."""
+    selector_config = _filtered_entity_selector(
+        domains=["sensor"],
+        device_class="power",
+    ).serialize()
+
+    assert selector_config == {
+        "selector": {
+            "entity": {
+                "domain": ["sensor"],
+                "filter": [{"device_class": ["power"], "domain": ["sensor"]}],
+                "multiple": False,
+                "reorder": False,
+            }
+        }
+    }
+
+
 def test_schema_uses_unfiltered_price_selector() -> None:
     """The price selector should not add an empty device class filter."""
     schema = _schema().schema
@@ -63,8 +86,8 @@ def test_schema_uses_unfiltered_price_selector() -> None:
     }
 
 
-def test_options_schema_relaxes_optional_selector_filters_for_existing_entries() -> None:
-    """The options schema does not enforce device class on existing optional fields."""
+def test_options_schema_keeps_optional_selector_filters() -> None:
+    """The options schema keeps proper power/energy filtering."""
     schema = _schema(
         {
             "integration_description": "Heat Pump",
@@ -82,6 +105,7 @@ def test_options_schema_relaxes_optional_selector_filters_for_existing_entries()
         "selector": {
             "entity": {
                 "domain": ["sensor"],
+                "filter": [{"device_class": ["power"], "domain": ["sensor"]}],
                 "multiple": False,
                 "reorder": False,
             }

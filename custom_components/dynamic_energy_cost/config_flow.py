@@ -21,20 +21,25 @@ from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, ENERGY_SENSOR, POWER_SENSOR
 _LOGGER = logging.getLogger(__name__)
 
 
-def _entity_selector(
-    *,
-    domains: list[str],
-    device_class: str | None = None,
-):
+def _entity_selector(*, domains: list[str]):
     """Create an entity selector for a single entity."""
-    config: dict[str, Any] = {
-        "domain": domains,
-        "multiple": False,
-    }
-    if device_class is not None:
-        config["device_class"] = device_class
+    return selector.EntitySelector(
+        selector.EntitySelectorConfig(
+            domain=domains,
+            multiple=False,
+        )
+    )
 
-    return selector.EntitySelector(selector.EntitySelectorConfig(**config))
+
+def _filtered_entity_selector(*, domains: list[str], device_class: str):
+    """Create an entity selector that uses the modern filter syntax."""
+    return selector.EntitySelector(
+        selector.EntitySelectorConfig(
+            domain=domains,
+            multiple=False,
+            filter=[{"domain": domains, "device_class": [device_class]}],
+        )
+    )
 
 
 def _clean_optional_value(value: Any) -> Any:
@@ -80,11 +85,10 @@ def _schema(
     defaults: dict[str, Any] | None = None,
     *,
     use_defaults: bool = True,
+    use_filtered_optional_selectors: bool = True,
 ) -> vol.Schema:
     """Build the shared config and options schema."""
     defaults = defaults or {}
-    relaxed_optional_selectors = bool(defaults)
-
     schema_dict = {
         vol.Required(
             "integration_description",
@@ -108,10 +112,9 @@ def _schema(
         )
         schema_dict[marker] = vol.Any(
             None,
-            _entity_selector(
-                domains=[SENSOR_DOMAIN],
-                device_class=None if relaxed_optional_selectors else device_class,
-            ),
+            _filtered_entity_selector(domains=[SENSOR_DOMAIN], device_class=device_class)
+            if use_filtered_optional_selectors
+            else _entity_selector(domains=[SENSOR_DOMAIN]),
         )
 
     return vol.Schema(schema_dict)
@@ -120,7 +123,7 @@ def _schema(
 class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Dynamic Energy Cost."""
 
-    VERSION = 2
+    VERSION = 3
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     async def async_step_user(self, user_input=None):
