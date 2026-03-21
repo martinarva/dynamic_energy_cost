@@ -6,7 +6,11 @@ from unittest.mock import AsyncMock, Mock, patch
 
 from custom_components.dynamic_energy_cost.const import HOURLY
 from custom_components.dynamic_energy_cost.entity import BaseUtilitySensor
-from custom_components.dynamic_energy_cost.sensor import EnergyCostSensor, PowerCostSensor, RealTimeCostSensor
+from custom_components.dynamic_energy_cost.sensor import (
+    EnergyCostSensor,
+    PowerCostSensor,
+    RealTimeCostSensor,
+)
 
 
 class _TestUtilitySensor(BaseUtilitySensor):

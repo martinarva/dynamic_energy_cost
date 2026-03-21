@@ -8,7 +8,11 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.dynamic_energy_cost import async_reload_entry, async_setup_entry
 from custom_components.dynamic_energy_cost.const import DOMAIN
-from custom_components.dynamic_energy_cost.sensor import EnergyCostSensor, RealTimeCostSensor, async_setup_entry as sensor_async_setup_entry
+from custom_components.dynamic_energy_cost.sensor import (
+    EnergyCostSensor,
+    RealTimeCostSensor,
+    async_setup_entry as sensor_async_setup_entry,
+)
 
 
 def _entry_data(**overrides):
@@ -43,7 +47,9 @@ async def test_reload_listener_reloads_entry(hass):
     entry = MockConfigEntry(domain=DOMAIN, data=_entry_data())
     entry.add_to_hass(hass)
 
-    with patch.object(hass.config_entries, "async_reload", AsyncMock(return_value=True)) as reload_entry:
+    with patch.object(
+        hass.config_entries, "async_reload", AsyncMock(return_value=True)
+    ) as reload_entry:
         await async_reload_entry(hass, entry)
 
     reload_entry.assert_awaited_once_with(entry.entry_id)
@@ -59,12 +65,16 @@ async def test_reload_listener_updates_title_from_latest_description(hass):
     )
 
     with (
-        patch.object(hass.config_entries, "async_reload", AsyncMock(return_value=True)) as reload_entry,
+        patch.object(
+            hass.config_entries, "async_reload", AsyncMock(return_value=True)
+        ) as reload_entry,
         patch.object(hass.config_entries, "async_update_entry") as update_entry,
     ):
         await async_reload_entry(hass, entry)
 
-    update_entry.assert_called_once_with(entry, title="Dynamic Energy Cost - EV Charger")
+    update_entry.assert_called_once_with(
+        entry, title="Dynamic Energy Cost - EV Charger"
+    )
     reload_entry.assert_awaited_once_with(entry.entry_id)
 
 

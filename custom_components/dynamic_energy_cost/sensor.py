@@ -385,7 +385,9 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         """Handle price sensor state changes."""
         try:
             old_price_state = event.data.get("old_state")
-            current_energy = _state_to_float(self.hass.states.get(self._energy_sensor_id))
+            current_energy = _state_to_float(
+                self.hass.states.get(self._energy_sensor_id)
+            )
             price = _state_to_float(old_price_state)
 
             if current_energy is None or price is None:

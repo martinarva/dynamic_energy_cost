@@ -44,7 +44,9 @@ def _normalize_user_input(user_input: dict[str, Any]) -> dict[str, Any]:
     cleaned = dict(user_input)
     cleaned[POWER_SENSOR] = _clean_optional_value(cleaned.get(POWER_SENSOR))
     cleaned[ENERGY_SENSOR] = _clean_optional_value(cleaned.get(ENERGY_SENSOR))
-    cleaned["integration_description"] = cleaned.get("integration_description", "Unnamed")
+    cleaned["integration_description"] = cleaned.get(
+        "integration_description", "Unnamed"
+    )
     return cleaned
 
 

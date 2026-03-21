@@ -8,11 +8,17 @@ from unittest.mock import AsyncMock, Mock
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.dynamic_energy_cost.const import DOMAIN, HOURLY
-from custom_components.dynamic_energy_cost.sensor import EnergyCostSensor, PowerCostSensor, RealTimeCostSensor
+from custom_components.dynamic_energy_cost.sensor import (
+    EnergyCostSensor,
+    PowerCostSensor,
+    RealTimeCostSensor,
+)
 
 
 def _event(*, entity_id: str, new_state=None, old_state=None):
-    return Mock(data={"entity_id": entity_id, "new_state": new_state, "old_state": old_state})
+    return Mock(
+        data={"entity_id": entity_id, "new_state": new_state, "old_state": old_state}
+    )
 
 
 def _state(value: str):
@@ -239,7 +245,9 @@ async def test_energy_sensor_price_change_supports_decreasing_readings(hass):
     assert sensor._last_energy_reading == 11.0
 
 
-async def test_energy_sensor_restores_legacy_state_without_cumulative_cost_attribute(hass):
+async def test_energy_sensor_restores_legacy_state_without_cumulative_cost_attribute(
+    hass,
+):
     """Restore falls back to last state value for older entities."""
     sensor = EnergyCostSensor(
         hass,

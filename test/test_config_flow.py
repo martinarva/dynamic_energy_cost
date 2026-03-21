@@ -28,7 +28,9 @@ async def test_user_flow_creates_entry_with_power_sensor(hass):
         context={"source": SOURCE_USER},
     )
 
-    with patch("custom_components.dynamic_energy_cost.async_setup_entry", return_value=True):
+    with patch(
+        "custom_components.dynamic_energy_cost.async_setup_entry", return_value=True
+    ):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
             _base_user_input(),

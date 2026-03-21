@@ -7,7 +7,11 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.dynamic_energy_cost import async_migrate_entry
 from custom_components.dynamic_energy_cost.const import DOMAIN, HOURLY
-from custom_components.dynamic_energy_cost.sensor import EnergyCostSensor, PowerCostSensor, RealTimeCostSensor
+from custom_components.dynamic_energy_cost.sensor import (
+    EnergyCostSensor,
+    PowerCostSensor,
+    RealTimeCostSensor,
+)
 
 
 def _entry_data(**overrides):
@@ -23,7 +27,9 @@ def _entry_data(**overrides):
 
 async def test_migrate_entry_updates_legacy_unique_ids(hass):
     """Migration keeps existing entity IDs while moving to stable unique IDs."""
-    entry = MockConfigEntry(domain=DOMAIN, version=1, data=_entry_data(), entry_id="entry-123")
+    entry = MockConfigEntry(
+        domain=DOMAIN, version=1, data=_entry_data(), entry_id="entry-123"
+    )
     entry.add_to_hass(hass)
     registry = er.async_get(hass)
 
@@ -52,9 +58,18 @@ async def test_migrate_entry_updates_legacy_unique_ids(hass):
     assert await async_migrate_entry(hass, entry) is True
 
     assert entry.version == 2
-    assert registry.async_get_entity_id("sensor", DOMAIN, "entry-123_real_time_cost") == realtime.entity_id
-    assert registry.async_get_entity_id("sensor", DOMAIN, "entry-123_hourly_power_cost") == power.entity_id
-    assert registry.async_get_entity_id("sensor", DOMAIN, "entry-123_hourly_energy_cost") == energy.entity_id
+    assert (
+        registry.async_get_entity_id("sensor", DOMAIN, "entry-123_real_time_cost")
+        == realtime.entity_id
+    )
+    assert (
+        registry.async_get_entity_id("sensor", DOMAIN, "entry-123_hourly_power_cost")
+        == power.entity_id
+    )
+    assert (
+        registry.async_get_entity_id("sensor", DOMAIN, "entry-123_hourly_energy_cost")
+        == energy.entity_id
+    )
 
 
 async def test_sensors_use_entry_based_unique_ids(hass):
@@ -83,7 +98,9 @@ async def test_sensors_use_entry_based_unique_ids(hass):
 
 async def test_migrate_entry_skips_collision_without_breaking_existing_entity(hass):
     """Migration leaves the legacy entity in place if the target unique ID already exists."""
-    entry = MockConfigEntry(domain=DOMAIN, version=1, data=_entry_data(), entry_id="entry-123")
+    entry = MockConfigEntry(
+        domain=DOMAIN, version=1, data=_entry_data(), entry_id="entry-123"
+    )
     entry.add_to_hass(hass)
     registry = er.async_get(hass)
 
@@ -104,14 +121,22 @@ async def test_migrate_entry_skips_collision_without_breaking_existing_entity(ha
 
     assert await async_migrate_entry(hass, entry) is True
 
-    assert registry.async_get_entity_id("sensor", DOMAIN, "entry-123_real_time_cost") == stable.entity_id
-    assert registry.async_get_entity_id(
-        "sensor", DOMAIN, f"{entry.entry_id}_sensor.heat_pump_power_real_time_cost"
-    ) == legacy.entity_id
+    assert (
+        registry.async_get_entity_id("sensor", DOMAIN, "entry-123_real_time_cost")
+        == stable.entity_id
+    )
+    assert (
+        registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{entry.entry_id}_sensor.heat_pump_power_real_time_cost"
+        )
+        == legacy.entity_id
+    )
     assert entry.version == 1
 
 
-async def test_migrate_entry_includes_legacy_ids_from_original_data_when_options_changed(hass):
+async def test_migrate_entry_includes_legacy_ids_from_original_data_when_options_changed(
+    hass,
+):
     """Migration still finds legacy entities created from entry.data after options edits."""
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -136,10 +161,15 @@ async def test_migrate_entry_includes_legacy_ids_from_original_data_when_options
     )
 
     assert await async_migrate_entry(hass, entry) is True
-    assert registry.async_get_entity_id("sensor", DOMAIN, "entry-123_real_time_cost") == legacy.entity_id
+    assert (
+        registry.async_get_entity_id("sensor", DOMAIN, "entry-123_real_time_cost")
+        == legacy.entity_id
+    )
 
 
-async def test_migrate_entry_includes_legacy_energy_ids_from_original_data_when_options_changed(hass):
+async def test_migrate_entry_includes_legacy_energy_ids_from_original_data_when_options_changed(
+    hass,
+):
     """Migration still finds legacy energy entities created from entry.data after options edits."""
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -168,4 +198,7 @@ async def test_migrate_entry_includes_legacy_energy_ids_from_original_data_when_
     )
 
     assert await async_migrate_entry(hass, entry) is True
-    assert registry.async_get_entity_id("sensor", DOMAIN, "entry-123_hourly_energy_cost") == legacy.entity_id
+    assert (
+        registry.async_get_entity_id("sensor", DOMAIN, "entry-123_hourly_energy_cost")
+        == legacy.entity_id
+    )

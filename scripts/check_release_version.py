@@ -12,7 +12,9 @@ def normalize_tag(tag: str) -> str:
     return tag.removeprefix("v")
 
 
-def validate_release_version(manifest_path: Path, release_tag: str | None = None) -> str:
+def validate_release_version(
+    manifest_path: Path, release_tag: str | None = None
+) -> str:
     """Return the manifest version and validate it against an optional tag."""
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     manifest_version = manifest["version"]
