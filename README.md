@@ -11,9 +11,6 @@
 <a href="https://github.com/martinarva/dynamic_energy_cost/releases/latest">
     <img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/martinarva/dynamic_energy_cost">
   </a>
-<a style="text-decoration:none" href="https://github.com/martinarva/dynamic_energy_cost/archive/refs/heads/Develop.zip">
-  <img alt="Static Badge" src="https://img.shields.io/badge/develop-beta-blue">
-  </a>
 <p align="center">
     <img src="https://skills.syvixor.com/api/icons?i=github,homeassistant,hacs,python,gitlocalize" />
   </a>
@@ -21,12 +18,32 @@
 
 This Home Assistant custom integration provides a sophisticated real-time and cumulative energy cost tracking solution, ideal for monitoring electricity expenses related to fluctuating prices and varying energy consumption levels. It's specifically crafted to handle dynamic electricity prices such as those from [Nord Pool](https://www.home-assistant.io/integrations/nordpool/), [Amber](https://www.home-assistant.io/integrations/amberelectric/), [Tibber](https://www.home-assistant.io/integrations/tibber), ...
 
+## Project status
+
+This project is actively maintained again and received a larger stabilization pass in releases `v0.9.4` through `v0.9.8`.
+
+- config flow and options flow editing were stabilized
+- entity identity and migration behavior were improved
+- power-based cost tracking was hardened and made more precise
+- statistics/reset metadata was improved for interval sensors
+- issue and pull request backlog was significantly cleaned up
+
+If you tried the integration a while ago and hit rough edges, it is worth retesting on the latest release.
+
+## Quick start
+
+- Use a dynamic electricity price sensor that already represents the final price you want to track.
+- Prefer an energy (`kWh`) sensor whenever one is available.
+- Use a power (`W`) sensor only as a fallback.
+- If you need tariffs, standing charges, VAT, gas conversion, or other custom business logic, build that into a separate template sensor first and feed the final result into this integration.
+
 ## Features
 
 - **Real-Time Cost Sensor (only Power Based):** Calculates energy costs in real-time based on current power usage in watts (W) and electricity prices.
-- **Hourly, Daily, Weekly, Monthly and Yearly Cost (Energy and Power Based):** Automatically generates daily, monthly, and yearly accumulations of costs, facilitating detailed and segmented analysis of energy expenses. These are based on actual energy usage in kilowatt-hours (kWh), providing precision aligned with the Home Assistant Energy Dashboard.
+- **15-Minute, Hourly, Daily, Weekly, Monthly and Yearly Cost (Energy and Power Based):** Automatically generates interval-based accumulated cost sensors for detailed energy expense tracking.
 - **Sensor without reset interval (Energy and Power Based)** Similar to the above, but does not reset automatically. It resets only when the service `dynamic_energy_cost.reset_cost` is called. Making it perfect for calculating specific costs, such as the expenses for individual charging sessions of an electric car.
 - **Enhanced Sensor Attributes:** Energy Based Sensors include attributes for total energy used (kWh) and the average energy price, aiding in energy usage optimization during cheaper hours.
+- **Statistics-friendly reset metadata:** Interval cost sensors expose `last_reset`, and resetting cost sensors now behave better with Home Assistant statistics consumers.
 
 ## Best Practices
 
@@ -37,6 +54,18 @@ Calculating energy cost from an energy (kWh) sensor is the preferred and recomme
 - **If you only have a power sensor, it is still supported.** The integration includes safeguards for spikes, restarts, and low-load precision, but it remains an approximation compared with kWh-based tracking.
 
 **Note:** It is important that only one type of sensor (either power or energy) is configured for this integration. Both cannot be used simultaneously.
+
+## Scope
+
+Dynamic Energy Cost is intentionally focused on turning a price sensor and a consumption sensor into cost sensors.
+
+It is not intended to be a full contract or utility billing engine. In particular, these are better handled outside the integration with template sensors, helpers, or automations:
+
+- standing charges
+- tariff blending / VAT / fixed margins
+- gas unit conversion (`m3` -> `kWh`)
+- solar self-consumption or export deduction logic
+- plan comparison against a different fixed-price contract
 
 ## Installation
 
@@ -88,6 +117,20 @@ When setting up the integration, you will be prompted to provide the following:
   - **Power/Energy Usage Sensor:** Ensure the sensor measures in Watts (W) for power or kilowatt-hours (kWh) for energy. Prefer the energy sensor option when both are available.
 - Submit to complete the integration setup.
 
+### Recommended setup
+
+Best option:
+
+- electricity price sensor (`EUR/kWh`)
+- cumulative energy sensor (`kWh`)
+
+Fallback option:
+
+- electricity price sensor (`EUR/kWh`)
+- power sensor (`W`)
+
+The fallback works well for many setups, but it remains approximation-based because it integrates instantaneous power readings over time.
+
 ## Updating
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?repository=dynamic_energy_cost&owner=martinarva&category=Integration)
@@ -136,21 +179,28 @@ data:
 - **Energy Usage Sensor (optional):** A sensor that monitors energy consumption in kilowatt-hours (kWh).
 - **Virtual Energy Usage Sensor (optional):** Use a virtual energy sensor such as e.g. [Powercalc](https://docs.powercalc.nl/).
 
-## Beta testing
-
-1. Download the [latest develop ZIP file of Dynamic Energy Cost](https://github.com/martinarva/dynamic_energy_cost/archive/refs/heads/Develop.zip) and extract its contents.
-2. Go to your'e Home Assistant instance.
-3. Make sure to make a back up first.  
-  <a href="https://my.home-assistant.io/redirect/backup/" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/backup.svg" alt="Open your Home Assistant instance and show an overview of your backups." /></a>  
-4. Overwrite the `dynamic_energy_cost` folder into the `custom_components` directory located typically at `/config/custom_components/`.  
-5. Reboot Home Assistant.  
-  <a href="https://my.home-assistant.io/redirect/developer_call_service/?service=homeassistant%2Erestart" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/developer_call_service.svg" alt="Open your Home Assistant instance and show your service developer tools with a specific action selected." /></a>
-
 ## Contribute
 
-If you want, you can help with the translation via [GitLocalize](https://gitlocalize.com/repo/10085).
+Contributions are welcome.
+
+- Bug reports with exact sensor setup, screenshots, and logs are extremely helpful.
+- If you use a `W` sensor path, please mention that explicitly when reporting issues.
+- Translation help is welcome via [GitLocalize](https://gitlocalize.com/repo/10085).
+
+Thanks to everyone who has reported bugs, tested edge cases, opened pull requests, and kept using the integration.
 
 ## Support
 
-For support, additional instructions visit Home Assitant Community  forum topic: [Dynamic Energy Cost](https://community.home-assistant.io/t/dynamic-energy-cost/726931)  
-To report issues, please visit the [GitHub issues page associated with this repository.](https://github.com/martinarva/dynamic_energy_cost/issues)
+For setup help, usage questions, and general discussion, use the Home Assistant Community topic: [Dynamic Energy Cost](https://community.home-assistant.io/t/dynamic-energy-cost/726931)
+
+Use GitHub issues for concrete bugs and actionable feature requests.
+
+When opening a bug report, please include:
+
+- integration version
+- Home Assistant version
+- whether you use a `kWh` sensor or a `W` sensor
+- the source sensor entities involved
+- screenshots or logs that show the current behavior
+
+GitHub issues: [Dynamic Energy Cost issues](https://github.com/martinarva/dynamic_energy_cost/issues)
