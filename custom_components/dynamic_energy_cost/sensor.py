@@ -29,6 +29,7 @@ from .const import (
     WEEKLY,
     YEARLY,
 )
+from . import get_entry_config
 from .entity import BaseUtilitySensor
 
 INTERVALS = [QUARTERLY, HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
@@ -66,7 +67,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Sensor platform setup based on user configuration."""
-    data = config_entry.data
+    data = get_entry_config(config_entry)
     electricity_price_sensor = data[ELECTRICITY_PRICE_SENSOR]
     sensors = []
 

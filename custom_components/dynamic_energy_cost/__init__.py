@@ -1,6 +1,9 @@
 """Home Assistant support for Dynamic Energy Costs."""
 
+from __future__ import annotations
+
 import logging
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -11,10 +14,23 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS = [Platform.SENSOR]
 
 
+def get_entry_config(entry: ConfigEntry) -> dict[str, Any]:
+    """Return merged config entry data and options."""
+    return {**entry.data, **entry.options}
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload the config entry when options are updated."""
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up Dynamic Energy Cost from a config entry."""
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+
     _LOGGER.info(
-        "Starting setup of Dynamic Energy Cost component, entry.data: %s", entry.data
+        "Starting setup of Dynamic Energy Cost component, entry config: %s",
+        get_entry_config(entry),
     )
 
     try:
