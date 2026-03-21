@@ -77,6 +77,28 @@ def test_realtime_sensor_ignores_none_event_state(hass):
     sensor.async_write_ha_state.assert_not_called()
 
 
+def test_realtime_sensor_keeps_internal_precision_for_low_loads(hass):
+    """Realtime cost keeps more than 2 decimals internally for power integration."""
+    sensor = RealTimeCostSensor(
+        hass,
+        _entry(),
+        "sensor.electricity_price",
+        "sensor.heat_pump_power",
+    )
+    sensor.async_write_ha_state = Mock()
+
+    hass.states.async_set("sensor.electricity_price", "0.9731")
+    hass.states.async_set("sensor.heat_pump_power", "17")
+
+    sensor.handle_state_change(
+        _event(entity_id="sensor.heat_pump_power", new_state=_state("17"))
+    )
+
+    assert sensor._state == Decimal("0.0165")
+    assert sensor.state == 0.0165
+    sensor.async_write_ha_state.assert_called_once()
+
+
 async def test_energy_sensor_zero_price_and_follow_up_increment(hass):
     """Energy sensor handles zero price and later increments correctly."""
     sensor = EnergyCostSensor(
@@ -310,6 +332,7 @@ def test_power_sensor_integrates_cost_over_elapsed_time(hass):
     from datetime import timedelta
     from homeassistant.util.dt import now
 
+    sensor._last_cost_rate = Decimal("1.5")
     sensor._last_update = now() - timedelta(hours=2)
     sensor._handle_real_time_cost_update(
         _event(entity_id=realtime_sensor.entity_id, new_state=_state("1.5"))
@@ -317,6 +340,111 @@ def test_power_sensor_integrates_cost_over_elapsed_time(hass):
 
     assert sensor.state == Decimal("4.0000")
     sensor.async_write_ha_state.assert_called_once()
+
+
+def test_power_sensor_uses_previous_cost_rate_for_elapsed_time(hass):
+    """Elapsed time is charged using the previous realtime cost rate."""
+    realtime_sensor = Mock(entity_id="sensor.heat_pump_real_time_energy_cost")
+    realtime_sensor.name = "Heat Pump Real Time Energy Cost"
+    realtime_sensor.device_info = {"identifiers": {(DOMAIN, "entry-123")}}
+    realtime_sensor.unique_id = "entry-123_real_time_cost"
+    realtime_sensor._config_entry = _entry()
+
+    sensor = PowerCostSensor(hass, realtime_sensor, HOURLY)
+    sensor.async_write_ha_state = Mock()
+    sensor._state = Decimal("1.0000")
+
+    from datetime import timedelta
+    from homeassistant.util.dt import now
+
+    sensor._last_update = now() - timedelta(hours=2)
+    sensor._handle_real_time_cost_update(
+        _event(
+            entity_id=realtime_sensor.entity_id,
+            old_state=_state("0.5"),
+            new_state=_state("1.5"),
+        )
+    )
+
+    assert sensor.state == Decimal("2.0000")
+    assert sensor._last_cost_rate == Decimal("1.5")
+    sensor.async_write_ha_state.assert_called_once()
+
+
+def test_power_sensor_uses_precise_rate_for_elapsed_time(hass):
+    """Power integration uses the higher precision realtime rate baseline."""
+    realtime_sensor = Mock(entity_id="sensor.heat_pump_real_time_energy_cost")
+    realtime_sensor.name = "Heat Pump Real Time Energy Cost"
+    realtime_sensor.device_info = {"identifiers": {(DOMAIN, "entry-123")}}
+    realtime_sensor.unique_id = "entry-123_real_time_cost"
+    realtime_sensor._config_entry = _entry()
+
+    sensor = PowerCostSensor(hass, realtime_sensor, HOURLY)
+    sensor.async_write_ha_state = Mock()
+    sensor._state = Decimal("0.0000")
+
+    from datetime import timedelta
+    from homeassistant.util.dt import now
+
+    sensor._last_cost_rate = Decimal("0.0165")
+    sensor._last_update = now() - timedelta(hours=2)
+    sensor._handle_real_time_cost_update(
+        _event(
+            entity_id=realtime_sensor.entity_id,
+            old_state=_state("0.0165"),
+            new_state=_state("0.0200"),
+        )
+    )
+
+    assert sensor.state == Decimal("0.0330")
+
+
+def test_power_sensor_does_not_backfill_idle_time_with_new_spike(hass):
+    """A new spike after idle time does not charge the whole gap at the new rate."""
+    realtime_sensor = Mock(entity_id="sensor.heat_pump_real_time_energy_cost")
+    realtime_sensor.name = "Heat Pump Real Time Energy Cost"
+    realtime_sensor.device_info = {"identifiers": {(DOMAIN, "entry-123")}}
+    realtime_sensor.unique_id = "entry-123_real_time_cost"
+    realtime_sensor._config_entry = _entry()
+
+    sensor = PowerCostSensor(hass, realtime_sensor, HOURLY)
+    sensor.async_write_ha_state = Mock()
+    sensor._state = Decimal("0.0000")
+
+    from datetime import timedelta
+    from homeassistant.util.dt import now
+
+    sensor._last_update = now() - timedelta(hours=3)
+    sensor._handle_real_time_cost_update(
+        _event(
+            entity_id=realtime_sensor.entity_id,
+            old_state=_state("0"),
+            new_state=_state("7.5"),
+        )
+    )
+
+    assert sensor.state == Decimal("0.0000")
+    assert sensor._last_cost_rate == Decimal("7.5")
+
+
+async def test_power_sensor_restore_uses_current_rate_as_baseline(hass):
+    """Restore sets the current realtime rate as the baseline for later integration."""
+    realtime_sensor = Mock(entity_id="sensor.heat_pump_real_time_energy_cost")
+    realtime_sensor.name = "Heat Pump Real Time Energy Cost"
+    realtime_sensor.device_info = {"identifiers": {(DOMAIN, "entry-123")}}
+    realtime_sensor.unique_id = "entry-123_real_time_cost"
+    realtime_sensor._config_entry = _entry()
+
+    hass.states.async_set(realtime_sensor.entity_id, "2.5")
+
+    sensor = PowerCostSensor(hass, realtime_sensor, HOURLY)
+    sensor.async_get_last_state = AsyncMock(return_value=Mock(state="4.0"))
+    sensor.schedule_next_reset = Mock()
+
+    await sensor.async_added_to_hass()
+
+    assert sensor.state == Decimal("4.0")
+    assert sensor._last_cost_rate == Decimal("2.5")
 
 
 def test_energy_sensor_uses_entry_based_device_identifier(hass):

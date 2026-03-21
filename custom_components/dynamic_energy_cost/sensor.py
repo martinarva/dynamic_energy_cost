@@ -39,6 +39,7 @@ from .entity import BaseUtilitySensor
 INTERVALS = [QUARTERLY, HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
 
 _LOGGER = logging.getLogger(__name__)
+REALTIME_COST_PRECISION = Decimal("0.0001")
 
 
 def interval_display_name(interval: str) -> str:
@@ -244,9 +245,12 @@ class RealTimeCostSensor(SensorEntity):
             return
 
         try:
-            calculated_cost = round(electricity_price * (power_usage / 1000), 2)
+            calculated_cost = (
+                Decimal(str(electricity_price))
+                * (Decimal(str(power_usage)) / Decimal("1000"))
+            ).quantize(REALTIME_COST_PRECISION)
             if calculated_cost != self._state:
-                self._state = Decimal(calculated_cost)
+                self._state = calculated_cost
                 self.async_write_ha_state()
                 _LOGGER.debug(
                     "Updated Real Time Energy Cost: %s EUR/h", calculated_cost
@@ -483,6 +487,7 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
         """Initialize the sensor."""
         super().__init__(hass, interval)
         self._real_time_cost_sensor = real_time_cost_sensor
+        self._last_cost_rate: Decimal | None = None
         base_name = real_time_cost_sensor.name.replace(
             " Real Time Energy Cost", ""
         ).strip()
@@ -502,6 +507,21 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
                 _LOGGER.error(
                     "Invalid state value for restoration: %s", last_state.state
                 )
+
+        current_rate_state = self.hass.states.get(self._real_time_cost_sensor.entity_id)
+        if current_rate_state and current_rate_state.state not in (
+            "unknown",
+            "unavailable",
+        ):
+            try:
+                self._last_cost_rate = Decimal(current_rate_state.state)
+            except InvalidOperation:
+                _LOGGER.error(
+                    "Invalid realtime cost value for baseline: %s",
+                    current_rate_state.state,
+                )
+
+        self._last_update = now()
 
         self.schedule_next_reset()
         _LOGGER.debug(
@@ -523,17 +543,27 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
     @callback
     def _handle_real_time_cost_update(self, event: Event):
         """Update cumulative cost based on the real-time cost sensor updates."""
+        old_state = event.data.get("old_state")
         new_state = event.data.get("new_state")
         if new_state is None or new_state.state in ("unknown", "unavailable"):
             _LOGGER.debug("Skipping update due to unavailable state")
             return
 
         try:
-            if self._last_update is None:
+            current_cost = Decimal(new_state.state)
+            previous_cost = self._last_cost_rate
+
+            if old_state is not None and old_state.state not in (
+                "unknown",
+                "unavailable",
+            ):
+                previous_cost = Decimal(old_state.state)
+
+            if self._last_update is None or previous_cost is None:
+                self._last_cost_rate = current_cost
                 self._last_update = now()
                 return
 
-            current_cost = Decimal(new_state.state)
             _LOGGER.debug(
                 "Current cost retrieved from state: %s", current_cost
             )  # Log current cost
@@ -551,13 +581,14 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
                 hours_passed,
             )  # Log time difference in hours
 
-            self._state += (current_cost * hours_passed).quantize(Decimal("0.0001"))
+            self._state += (previous_cost * hours_passed).quantize(Decimal("0.0001"))
+            self._last_cost_rate = current_cost
             self._last_update = now()
             self.async_write_ha_state()
             _LOGGER.debug(
-                "Updated state to: %s using cost: %s over %s hours",
+                "Updated state to: %s using previous cost: %s over %s hours",
                 self._state,
-                current_cost,
+                previous_cost,
                 hours_passed,
             )
         except (InvalidOperation, TypeError) as e:

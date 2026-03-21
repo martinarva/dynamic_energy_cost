@@ -30,7 +30,11 @@ This Home Assistant custom integration provides a sophisticated real-time and cu
 
 ## Best Practices
 
-Calculating energy cost from an energy (kWh) sensor is the more precise and recommended method. If an energy sensor is available, it is advisable to use this option for accuracy comparable to the Home Assistant Energy Dashboard. If no kWh sensor is available, the integration can alternatively use a power (W) sensor.
+Calculating energy cost from an energy (kWh) sensor is the preferred and recommended method. If an energy sensor is available, use it instead of a power sensor whenever possible.
+
+- **Use an energy sensor whenever you can.** A cumulative kWh sensor is more accurate, behaves more like the Home Assistant Energy Dashboard, and is less sensitive to restarts or sparse updates.
+- **Use a power sensor only as a fallback.** Power-based cost tracking integrates instantaneous W readings over time, so the final accuracy depends on how often the source sensor reports and how cleanly it reports changes.
+- **If you only have a power sensor, it is still supported.** The integration includes safeguards for spikes, restarts, and low-load precision, but it remains an approximation compared with kWh-based tracking.
 
 **Note:** It is important that only one type of sensor (either power or energy) is configured for this integration. Both cannot be used simultaneously.
 
@@ -81,7 +85,7 @@ When setting up the integration, you will be prompted to provide the following:
 
 - Input the entity IDs
   - **Electricity Price Sensor:** Sensor that provides the current electricity price (for example Nordpool, Ember, ... fixed price, day/night).
-  - **Power/Energy Usage Sensor:** Ensure the sensor measures in Watts (W) for power or kilowatt-hours (kWh) for energy.
+  - **Power/Energy Usage Sensor:** Ensure the sensor measures in Watts (W) for power or kilowatt-hours (kWh) for energy. Prefer the energy sensor option when both are available.
 - Submit to complete the integration setup.
 
 ## Updating
