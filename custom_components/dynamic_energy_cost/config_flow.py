@@ -23,12 +23,15 @@ _LOGGER = logging.getLogger(__name__)
 
 def _entity_selector(*, domains: list[str], device_class: str | None = None):
     """Create an entity selector for a single entity."""
+    config: dict[str, Any] = {
+        "domain": domains,
+        "multiple": False,
+    }
+    if device_class is not None:
+        config["device_class"] = device_class
+
     return selector.EntitySelector(
-        selector.EntitySelectorConfig(
-            domain=domains,
-            multiple=False,
-            device_class=device_class,
-        )
+        selector.EntitySelectorConfig(**config)
     )
 
 

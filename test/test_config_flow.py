@@ -8,6 +8,7 @@ from homeassistant.config_entries import SOURCE_USER
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.dynamic_energy_cost.config_flow import _entity_selector, _schema
 from custom_components.dynamic_energy_cost.const import DOMAIN
 
 
@@ -19,6 +20,40 @@ def _base_user_input(**overrides):
     }
     data.update(overrides)
     return data
+
+
+def test_entity_selector_omits_device_class_when_not_requested() -> None:
+    """The generic selector should not serialize an empty device class filter."""
+    selector_config = _entity_selector(
+        domains=["sensor", "number", "input_number"],
+    ).serialize()
+
+    assert selector_config == {
+        "selector": {
+            "entity": {
+                "domain": ["sensor", "number", "input_number"],
+                "multiple": False,
+                "reorder": False,
+            }
+        }
+    }
+
+
+def test_schema_uses_unfiltered_price_selector() -> None:
+    """The price selector should not add an empty device class filter."""
+    schema = _schema().schema
+    price_selector = schema[next(key for key in schema if getattr(key, "schema", None) == "electricity_price_sensor")]
+    serialized = price_selector.serialize()
+
+    assert serialized == {
+        "selector": {
+            "entity": {
+                "domain": ["sensor", "number", "input_number"],
+                "multiple": False,
+                "reorder": False,
+            }
+        }
+    }
 
 
 async def test_user_flow_creates_entry_with_power_sensor(hass):
