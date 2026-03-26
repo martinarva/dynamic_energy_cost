@@ -121,8 +121,10 @@ class BaseUtilitySensor(SensorEntity):
         if hasattr(self, "_cumulative_cost"):
             self._cumulative_cost = 0  # pylint: disable=attribute-defined-outside-init
 
-        if hasattr(self, "_last_energy_reading"):
-            self._last_energy_reading = None  # pylint: disable=attribute-defined-outside-init
+        # NOTE: _last_energy_reading is intentionally NOT cleared here.
+        # The underlying energy sensor keeps incrementing after reset;
+        # clearing it would cause the first delta to be swallowed as a
+        # baseline re-initialisation instead of producing a cost increment.
         if hasattr(self, "_last_cost_rate"):
             self._last_cost_rate = None  # pylint: disable=attribute-defined-outside-init
         self._last_update = now()

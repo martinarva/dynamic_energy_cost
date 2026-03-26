@@ -167,6 +167,41 @@ async def test_energy_sensor_reset_to_zero_reinitializes_baseline(hass):
     assert sensor._last_energy_reading == 1.0
 
 
+async def test_energy_cost_reset_does_not_swallow_first_delta(hass):
+    """First energy increase after periodic reset must produce a cost increment."""
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.heat_pump_energy",
+        "sensor.electricity_price",
+        HOURLY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 100.0
+    sensor._cumulative_cost = 50.0
+    sensor._cumulative_energy = 20.0
+    sensor._state = 50.0
+
+    hass.states.async_set("sensor.electricity_price", "2")
+
+    # Simulate periodic reset (daily/weekly/monthly)
+    sensor.schedule_next_reset = Mock()
+    sensor.async_reset()
+
+    assert sensor.state == 0
+    # _last_energy_reading must be preserved so next delta works
+    assert sensor._last_energy_reading == 100.0
+
+    # First energy update after reset — should NOT be swallowed
+    await sensor._async_update_energy_event(
+        _event(entity_id="sensor.heat_pump_energy", new_state=_state("102"))
+    )
+
+    assert sensor._cumulative_cost == 4.0  # 2 kWh * €2
+    assert sensor.state == 4.0
+    assert sensor._last_energy_reading == 102.0
+
+
 async def test_energy_sensor_calibrate_updates_internal_baseline(hass):
     """Calibration affects the next increment instead of being overwritten."""
     sensor = EnergyCostSensor(
