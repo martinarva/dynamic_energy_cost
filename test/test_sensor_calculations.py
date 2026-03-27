@@ -11,7 +11,7 @@ from homeassistant.util import dt as dt_util
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.dynamic_energy_cost.const import DOMAIN, HOURLY
+from custom_components.dynamic_energy_cost.const import DAILY, DOMAIN, HOURLY
 from custom_components.dynamic_energy_cost.sensor import (
     EnergyCostSensor,
     PowerCostSensor,
@@ -167,8 +167,8 @@ async def test_energy_sensor_reset_to_zero_reinitializes_baseline(hass):
     assert sensor._last_energy_reading == 1.0
 
 
-async def test_energy_cost_reset_does_not_swallow_first_delta(hass):
-    """First energy increase after periodic reset must produce a cost increment."""
+async def test_energy_cost_reset_reinitialises_baseline(hass):
+    """After periodic reset, first reading sets baseline and second produces cost."""
     sensor = EnergyCostSensor(
         hass,
         _entry(),
@@ -189,17 +189,109 @@ async def test_energy_cost_reset_does_not_swallow_first_delta(hass):
     sensor.async_reset()
 
     assert sensor.state == 0
-    # _last_energy_reading must be preserved so next delta works
-    assert sensor._last_energy_reading == 100.0
+    assert sensor._last_energy_reading is None
 
-    # First energy update after reset — should NOT be swallowed
+    # First energy reading after reset — sets baseline
+    await sensor._async_update_energy_event(
+        _event(entity_id="sensor.heat_pump_energy", new_state=_state("100"))
+    )
+    assert sensor._last_energy_reading == 100.0
+    assert sensor.state == 0  # no cost yet, just baseline
+
+    # Second energy reading — produces correct cost
     await sensor._async_update_energy_event(
         _event(entity_id="sensor.heat_pump_energy", new_state=_state("102"))
     )
-
     assert sensor._cumulative_cost == 4.0  # 2 kWh * €2
     assert sensor.state == 4.0
     assert sensor._last_energy_reading == 102.0
+
+
+async def test_energy_sensor_daily_source_resets_with_daily_cost(hass):
+    """Daily source sensor + daily cost sensor: both reset around midnight."""
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.daily_energy",
+        "sensor.electricity_price",
+        DAILY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 50.0
+    sensor._cumulative_cost = 10.0
+    sensor._cumulative_energy = 5.0
+    sensor._state = 10.0
+
+    hass.states.async_set("sensor.electricity_price", "0.20")
+
+    # Cost sensor resets at midnight (clears _last_energy_reading)
+    sensor.schedule_next_reset = Mock()
+    sensor.async_reset()
+    assert sensor._last_energy_reading is None
+    assert sensor.state == 0
+
+    # Source sensor also resets — first reading sets baseline
+    await sensor._async_update_energy_event(
+        _event(entity_id="sensor.daily_energy", new_state=_state("0.1"))
+    )
+    assert sensor._last_energy_reading == 0.1
+    assert sensor.state == 0  # baseline only, no cost yet
+
+    # Next reading produces correct positive cost
+    await sensor._async_update_energy_event(
+        _event(entity_id="sensor.daily_energy", new_state=_state("2.1"))
+    )
+    assert sensor._cumulative_cost == 0.4  # 2 kWh * €0.20
+    assert sensor._last_energy_reading == 2.1
+
+
+async def test_energy_sensor_cumulative_source_never_resets(hass):
+    """Cumulative source sensor (total_increasing) works across cost resets."""
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.total_energy",
+        "sensor.electricity_price",
+        DAILY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 1000.0
+    sensor._cumulative_cost = 5.0
+    sensor._cumulative_energy = 10.0
+    sensor._state = 5.0
+
+    hass.states.async_set("sensor.electricity_price", "0.10")
+
+    # Cost sensor daily reset at midnight
+    sensor.schedule_next_reset = Mock()
+    sensor.async_reset()
+
+    assert sensor.state == 0
+    assert sensor._last_energy_reading is None
+
+    # Source sensor keeps incrementing (never resets)
+    await sensor._async_update_energy_event(
+        _event(entity_id="sensor.total_energy", new_state=_state("1002"))
+    )
+    # First reading after reset sets baseline
+    assert sensor._last_energy_reading == 1002.0
+    assert sensor.state == 0
+
+    await sensor._async_update_energy_event(
+        _event(entity_id="sensor.total_energy", new_state=_state("1005"))
+    )
+    # 3 kWh * €0.10 = €0.30
+    from pytest import approx
+
+    assert sensor._cumulative_cost == approx(0.3)
+    assert sensor.state == approx(0.3)
+
+    await sensor._async_update_energy_event(
+        _event(entity_id="sensor.total_energy", new_state=_state("1010"))
+    )
+    # +5 kWh * €0.10 = €0.50, total €0.80
+    assert sensor._cumulative_cost == approx(0.8)
+    assert sensor.state == approx(0.8)
 
 
 async def test_energy_sensor_calibrate_updates_internal_baseline(hass):
