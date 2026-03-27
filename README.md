@@ -20,15 +20,17 @@ This Home Assistant custom integration provides a sophisticated real-time and cu
 
 ## Project status
 
-This project is actively maintained again and received a larger stabilization pass in releases `v0.9.4` through `v0.9.8`.
+This project is actively maintained. Release `v1.0.0` marks a stable, feature-complete baseline.
 
+Key improvements since the early releases:
+
+- cost sensors now attach directly to the source device (e.g. your heat pump or EV charger) instead of creating a separate "Dynamic Energy Cost" device
 - config flow and options flow editing were stabilized
 - entity identity and migration behavior were improved
 - power-based cost tracking was hardened and made more precise
 - statistics/reset metadata was improved for interval sensors
-- issue and pull request backlog was significantly cleaned up
-
-If you tried the integration a while ago and hit rough edges, it is worth retesting on the latest release.
+- currency is automatically picked up from your Home Assistant settings
+- orphaned devices from earlier versions are cleaned up automatically
 
 ## Quick start
 
@@ -174,7 +176,7 @@ data:
 
 ## Prerequisites
 
-- **Electricity Price Sensor:** A sensor that provides the current electricity price in EUR/kWh.
+- **Electricity Price Sensor:** A sensor that provides the current electricity price per kWh (currency is taken from your Home Assistant settings).
 - **Power Usage Sensor (optional):** A sensor that monitors power usage in Watts (W).
 - **Energy Usage Sensor (optional):** A sensor that monitors energy consumption in kilowatt-hours (kWh).
 - **Virtual Energy Usage Sensor (optional):** Use a virtual energy sensor such as e.g. [Powercalc](https://docs.powercalc.nl/).
