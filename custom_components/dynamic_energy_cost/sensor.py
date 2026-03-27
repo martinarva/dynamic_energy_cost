@@ -81,6 +81,24 @@ def validate_is_number(value):
     raise vol.Invalid("Value is not a number")
 
 
+_ENERGY_UNIT_TO_KWH: dict[str, float] = {
+    "Wh": 0.001,
+    "kWh": 1.0,
+    "MWh": 1000.0,
+}
+
+
+def _energy_unit_conversion_factor(state) -> float:
+    """Return the factor to convert the energy sensor's unit to kWh.
+
+    Defaults to 1.0 (kWh) when the unit is missing or unrecognised.
+    """
+    if state is None:
+        return 1.0
+    unit = state.attributes.get("unit_of_measurement", "kWh")
+    return _ENERGY_UNIT_TO_KWH.get(unit, 1.0)
+
+
 def _state_to_float(state) -> float | None:
     """Convert a Home Assistant state object to float if usable."""
     if state is None or state.state in (None, "unknown", "unavailable"):
@@ -325,6 +343,9 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         self._last_energy_reading = None
         self._cumulative_energy = 0.0
         self._cumulative_cost = None  # updated on price change events and used for more precise cost calculations
+        self._energy_to_kwh = (
+            1.0  # resolved in async_added_to_hass from unit_of_measurement
+        )
 
         _LOGGER.debug(
             "Sensor initialized with energy sensor ID %s and price sensor ID %s",
@@ -413,6 +434,11 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
                 # For backwards compatibility
                 self._cumulative_cost = float(last_state.state)
 
+        # Resolve unit conversion factor from the source energy sensor
+        self._energy_to_kwh = _energy_unit_conversion_factor(
+            self.hass.states.get(self._energy_sensor_id)
+        )
+
         self.async_write_ha_state()
         # track energy sensor changes
         self.async_on_remove(
@@ -453,10 +479,11 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
                 self._last_energy_reading = current_energy
             else:
                 energy_difference = current_energy - self._last_energy_reading
-                cost_increment = energy_difference * price
+                energy_difference_kwh = energy_difference * self._energy_to_kwh
+                cost_increment = energy_difference_kwh * price
                 self._cumulative_cost += cost_increment
                 self._state = self._cumulative_cost
-                self._cumulative_energy += energy_difference
+                self._cumulative_energy += energy_difference_kwh
                 _LOGGER.debug(
                     f"Change in Energy price: cumulative cost {self._cumulative_cost} EUR and cumulative energy usage to {self._cumulative_energy} kWh"
                 )
@@ -472,8 +499,12 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         """Handle energy sensor state changes."""
         """Update the energy costs using the latest sensor states, adding both incremental as decremental costs."""
         try:
-            current_energy = _state_to_float(event.data.get("new_state"))
+            new_state = event.data.get("new_state")
+            current_energy = _state_to_float(new_state)
             price = _state_to_float(self.hass.states.get(self._price_sensor_id))
+            # Re-resolve unit in case the sensor was unavailable at startup
+            if self._energy_to_kwh == 1.0:
+                self._energy_to_kwh = _energy_unit_conversion_factor(new_state)
 
             if current_energy is None or price is None:
                 _LOGGER.debug("One or more sensors are unavailable. Skipping update.")
@@ -491,9 +522,10 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
                 return
 
             energy_difference = current_energy - self._last_energy_reading
-            cost_increment = energy_difference * price
+            energy_difference_kwh = energy_difference * self._energy_to_kwh
+            cost_increment = energy_difference_kwh * price
             self._cumulative_cost += cost_increment
-            self._cumulative_energy += energy_difference
+            self._cumulative_energy += energy_difference_kwh
             self._state = self._cumulative_cost
             self._last_energy_reading = current_energy
             _LOGGER.debug(

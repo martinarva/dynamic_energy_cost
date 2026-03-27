@@ -6,6 +6,8 @@ from decimal import Decimal
 from datetime import datetime
 from unittest.mock import AsyncMock, Mock
 
+import pytest
+
 from homeassistant.components.sensor import SensorStateClass
 from homeassistant.util import dt as dt_util
 
@@ -26,7 +28,11 @@ def _event(*, entity_id: str, new_state=None, old_state=None):
 
 
 def _state(value: str):
-    return Mock(state=value)
+    return Mock(state=value, attributes={})
+
+
+def _state_with_unit(value: str, unit: str):
+    return Mock(state=value, attributes={"unit_of_measurement": unit})
 
 
 def _entry() -> MockConfigEntry:
@@ -656,3 +662,113 @@ def test_energy_sensor_uses_entry_based_device_identifier(hass):
     )
 
     assert sensor.device_info["identifiers"] == {(DOMAIN, "entry-123")}
+
+
+async def test_energy_sensor_wh_unit_converts_to_kwh(hass):
+    """Energy sensor in Wh divides by 1000 before calculating cost."""
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.heat_pump_energy",
+        "sensor.electricity_price",
+        HOURLY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 1000.0
+    sensor._cumulative_cost = 0.0
+    sensor._energy_to_kwh = 0.001  # Wh → kWh
+
+    hass.states.async_set("sensor.electricity_price", "0.2")
+    await sensor._async_update_energy_event(
+        _event(
+            entity_id="sensor.heat_pump_energy",
+            new_state=_state_with_unit("2000", "Wh"),
+        )
+    )
+
+    # delta = 1000 Wh = 1 kWh; cost = 1 kWh × 0.2 = 0.2
+    assert sensor._cumulative_cost == pytest.approx(0.2)
+    assert sensor._cumulative_energy == pytest.approx(1.0)
+
+
+async def test_energy_sensor_mwh_unit_converts_to_kwh(hass):
+    """Energy sensor in MWh multiplies by 1000 before calculating cost."""
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.heat_pump_energy",
+        "sensor.electricity_price",
+        HOURLY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 1.0
+    sensor._cumulative_cost = 0.0
+    sensor._energy_to_kwh = 1000.0  # MWh → kWh
+
+    hass.states.async_set("sensor.electricity_price", "0.1")
+    await sensor._async_update_energy_event(
+        _event(
+            entity_id="sensor.heat_pump_energy",
+            new_state=_state_with_unit("2", "MWh"),
+        )
+    )
+
+    # delta = 1 MWh = 1000 kWh; cost = 1000 kWh × 0.1 = 100
+    assert sensor._cumulative_cost == pytest.approx(100.0)
+    assert sensor._cumulative_energy == pytest.approx(1000.0)
+
+
+async def test_energy_sensor_kwh_unit_unchanged(hass):
+    """Energy sensor in kWh uses factor 1.0 — behaviour unchanged."""
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.heat_pump_energy",
+        "sensor.electricity_price",
+        HOURLY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 10.0
+    sensor._cumulative_cost = 0.0
+    sensor._energy_to_kwh = 1.0  # kWh, default
+
+    hass.states.async_set("sensor.electricity_price", "0.3")
+    await sensor._async_update_energy_event(
+        _event(
+            entity_id="sensor.heat_pump_energy",
+            new_state=_state_with_unit("11", "kWh"),
+        )
+    )
+
+    # delta = 1 kWh; cost = 1 × 0.3 = 0.3
+    assert sensor._cumulative_cost == pytest.approx(0.3)
+    assert sensor._cumulative_energy == pytest.approx(1.0)
+
+
+async def test_energy_sensor_wh_unit_resolved_from_event(hass):
+    """Unit is resolved from first energy event when sensor was unavailable at startup."""
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.heat_pump_energy",
+        "sensor.electricity_price",
+        HOURLY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 1000.0
+    sensor._cumulative_cost = 0.0
+    # _energy_to_kwh stays at default 1.0 (sensor was unavailable at startup)
+    assert sensor._energy_to_kwh == 1.0
+
+    hass.states.async_set("sensor.electricity_price", "0.2")
+    # First event carries Wh unit — should trigger re-resolution
+    await sensor._async_update_energy_event(
+        _event(
+            entity_id="sensor.heat_pump_energy",
+            new_state=_state_with_unit("2000", "Wh"),
+        )
+    )
+
+    assert sensor._energy_to_kwh == pytest.approx(0.001)
+    # delta = 1000 Wh = 1 kWh; cost = 1 × 0.2 = 0.2
+    assert sensor._cumulative_cost == pytest.approx(0.2)
