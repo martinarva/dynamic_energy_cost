@@ -24,12 +24,12 @@ def test_manifest_version_is_plain_semver() -> None:
 def test_normalize_tag_strips_optional_v_prefix() -> None:
     """Release tags normalize to the manifest version format."""
     assert normalize_tag("1.0.2") == "1.0.2"
-    assert normalize_tag("v1.0.1") == "1.0.2"
+    assert normalize_tag("v1.0.2") == "1.0.2"
 
 
 def test_validate_release_version_accepts_matching_tag() -> None:
     """Release validation accepts matching versions."""
-    assert validate_release_version(MANIFEST_PATH, "v1.0.1") == "1.0.2"
+    assert validate_release_version(MANIFEST_PATH, "v1.0.2") == "1.0.2"
 
 
 def test_release_workflow_validates_version_without_mutating_manifest() -> None:

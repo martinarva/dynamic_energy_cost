@@ -686,7 +686,7 @@ async def test_energy_sensor_wh_unit_converts_to_kwh(hass):
         )
     )
 
-    # delta = 1000 Wh = 1 kWh; cost = 1 kWh × 0.2 = 0.2
+    # delta = 1000 Wh = 1 kWh; cost = 1 kWh x 0.2 = 0.2
     assert sensor._cumulative_cost == pytest.approx(0.2)
     assert sensor._cumulative_energy == pytest.approx(1.0)
 
@@ -713,7 +713,7 @@ async def test_energy_sensor_mwh_unit_converts_to_kwh(hass):
         )
     )
 
-    # delta = 1 MWh = 1000 kWh; cost = 1000 kWh × 0.1 = 100
+    # delta = 1 MWh = 1000 kWh; cost = 1000 kWh x 0.1 = 100
     assert sensor._cumulative_cost == pytest.approx(100.0)
     assert sensor._cumulative_energy == pytest.approx(1000.0)
 
@@ -740,7 +740,7 @@ async def test_energy_sensor_kwh_unit_unchanged(hass):
         )
     )
 
-    # delta = 1 kWh; cost = 1 × 0.3 = 0.3
+    # delta = 1 kWh; cost = 1 x 0.3 = 0.3
     assert sensor._cumulative_cost == pytest.approx(0.3)
     assert sensor._cumulative_energy == pytest.approx(1.0)
 
@@ -770,5 +770,5 @@ async def test_energy_sensor_wh_unit_resolved_from_event(hass):
     )
 
     assert sensor._energy_to_kwh == pytest.approx(0.001)
-    # delta = 1000 Wh = 1 kWh; cost = 1 × 0.2 = 0.2
+    # delta = 1000 Wh = 1 kWh; cost = 1 x 0.2 = 0.2
     assert sensor._cumulative_cost == pytest.approx(0.2)
