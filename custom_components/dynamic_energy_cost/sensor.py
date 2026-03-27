@@ -446,26 +446,21 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
             if self._cumulative_cost is None:
                 self._cumulative_cost = float(self._state)
 
-            if current_energy == 0 or self._last_energy_reading is None:
+            if self._last_energy_reading is None:
                 _LOGGER.debug(
                     "Initializing energy baseline from current reading during price update."
                 )
                 self._last_energy_reading = current_energy
             else:
-                # allow for decreasing energy readings to support energy feed-in
-                # and allow negative prices
                 energy_difference = current_energy - self._last_energy_reading
                 cost_increment = energy_difference * price
                 self._cumulative_cost += cost_increment
                 self._state = self._cumulative_cost
-                self._cumulative_energy += (
-                    energy_difference  # Add to the running total of energy
-                )
+                self._cumulative_energy += energy_difference
                 _LOGGER.debug(
                     f"Change in Energy price: cumulative cost {self._cumulative_cost} EUR and cumulative energy usage to {self._cumulative_energy} kWh"
                 )
-
-            self._last_energy_reading = current_energy
+                self._last_energy_reading = current_energy
             self.async_write_ha_state()
 
         except Exception as e:
@@ -489,7 +484,8 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
 
             if current_energy == 0 or self._last_energy_reading is None:
                 _LOGGER.debug(
-                    "No previous energy reading available or current reading is a perfect zero."
+                    "No previous energy reading or source sensor reset to zero. "
+                    "Initialising baseline."
                 )
                 self._last_energy_reading = current_energy
                 return
