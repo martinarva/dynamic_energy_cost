@@ -12,6 +12,7 @@ from custom_components.dynamic_energy_cost import async_reload_entry, async_setu
 from custom_components.dynamic_energy_cost.const import DOMAIN
 from custom_components.dynamic_energy_cost.sensor import (
     EnergyCostSensor,
+    PowerCostSensor,
     RealTimeCostSensor,
     async_setup_entry as sensor_async_setup_entry,
 )
@@ -251,3 +252,163 @@ async def test_setup_entry_removes_orphaned_energy_device(hass):
         assert await async_setup_entry(hass, entry) is True
 
     assert device_registry.async_get(old_device.id) is None
+
+
+async def test_cost_sensors_link_to_source_device(hass):
+    """Cost sensors attach to the source power sensor's device via device_entry."""
+    entry = MockConfigEntry(domain=DOMAIN, data=_entry_data(), entry_id="entry-456")
+    entry.add_to_hass(hass)
+
+    # Create a source device that owns the power sensor
+    device_registry = dr.async_get(hass)
+    source_device = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={("other_integration", "heat_pump_123")},
+        name="Heat Pump",
+    )
+    entity_registry = er.async_get(hass)
+    entity_registry.async_get_or_create(
+        "sensor",
+        "other_integration",
+        "heat_pump_power",
+        suggested_object_id="heat_pump_power",
+        device_id=source_device.id,
+        config_entry=entry,
+    )
+
+    async_add_entities = Mock()
+    with patch(
+        "custom_components.dynamic_energy_cost.sensor.register_entity_services",
+        AsyncMock(),
+    ):
+        await sensor_async_setup_entry(hass, entry, async_add_entities)
+
+    sensors = async_add_entities.call_args.args[0]
+    realtime = next(s for s in sensors if isinstance(s, RealTimeCostSensor))
+    power_cost = next(s for s in sensors if isinstance(s, PowerCostSensor))
+
+    assert realtime.device_entry is not None
+    assert realtime.device_entry.id == source_device.id
+    assert power_cost.device_entry is not None
+    assert power_cost.device_entry.id == source_device.id
+    # device_info returns None when device_entry is set
+    assert realtime.device_info is None
+
+
+async def test_cost_sensors_fallback_device_without_source_device(hass):
+    """Cost sensors create a standalone device when source has no device."""
+    entry = MockConfigEntry(domain=DOMAIN, data=_entry_data(), entry_id="entry-789")
+    entry.add_to_hass(hass)
+    # power sensor exists but has no device (e.g. template sensor)
+
+    async_add_entities = Mock()
+    with patch(
+        "custom_components.dynamic_energy_cost.sensor.register_entity_services",
+        AsyncMock(),
+    ):
+        await sensor_async_setup_entry(hass, entry, async_add_entities)
+
+    sensors = async_add_entities.call_args.args[0]
+    realtime = next(s for s in sensors if isinstance(s, RealTimeCostSensor))
+
+    assert realtime.device_entry is None
+    assert realtime.device_info is not None
+    assert realtime.device_info["identifiers"] == {(DOMAIN, "entry-789")}
+
+
+async def test_energy_sensors_link_to_source_device(hass):
+    """Energy cost sensors attach to the source energy sensor's device."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data=_entry_data(power_sensor=None, energy_sensor="sensor.heat_pump_energy"),
+        entry_id="entry-energy",
+    )
+    entry.add_to_hass(hass)
+
+    device_registry = dr.async_get(hass)
+    source_device = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={("other_integration", "heat_pump_456")},
+        name="Heat Pump",
+    )
+    entity_registry = er.async_get(hass)
+    entity_registry.async_get_or_create(
+        "sensor",
+        "other_integration",
+        "heat_pump_energy",
+        suggested_object_id="heat_pump_energy",
+        device_id=source_device.id,
+        config_entry=entry,
+    )
+
+    async_add_entities = Mock()
+    with patch(
+        "custom_components.dynamic_energy_cost.sensor.register_entity_services",
+        AsyncMock(),
+    ):
+        await sensor_async_setup_entry(hass, entry, async_add_entities)
+
+    sensors = async_add_entities.call_args.args[0]
+    energy_cost = sensors[0]
+    assert isinstance(energy_cost, EnergyCostSensor)
+    assert energy_cost.device_entry is not None
+    assert energy_cost.device_entry.id == source_device.id
+    assert energy_cost.device_info is None
+
+
+async def test_setup_removes_legacy_helper_device(hass):
+    """Setup cleans up the old (DOMAIN, entry_id) helper device."""
+    entry = MockConfigEntry(
+        domain=DOMAIN, version=3, data=_entry_data(), entry_id="entry-legacy"
+    )
+    entry.add_to_hass(hass)
+
+    device_registry = dr.async_get(hass)
+    old_device = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, "entry-legacy")},
+        name="Heat Pump Dynamic Energy Cost",
+        manufacturer="Custom Integration",
+    )
+
+    with patch.object(
+        hass.config_entries,
+        "async_forward_entry_setups",
+        AsyncMock(return_value=True),
+    ):
+        assert await async_setup_entry(hass, entry) is True
+
+    assert device_registry.async_get(old_device.id) is None
+
+
+async def test_legacy_device_not_removed_if_entities_remain(hass):
+    """Legacy device is kept if it still has entities attached."""
+    entry = MockConfigEntry(
+        domain=DOMAIN, version=3, data=_entry_data(), entry_id="entry-keep"
+    )
+    entry.add_to_hass(hass)
+
+    device_registry = dr.async_get(hass)
+    old_device = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, "entry-keep")},
+        name="Heat Pump Dynamic Energy Cost",
+    )
+    entity_registry = er.async_get(hass)
+    entity_registry.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        "some_remaining_entity",
+        device_id=old_device.id,
+        config_entry=entry,
+    )
+
+    with patch.object(
+        hass.config_entries,
+        "async_forward_entry_setups",
+        AsyncMock(return_value=True),
+    ):
+        assert await async_setup_entry(hass, entry) is True
+
+    # Device should still exist because it has entities
+    assert device_registry.async_get(old_device.id) is not None

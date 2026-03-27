@@ -174,6 +174,37 @@ def _cleanup_orphaned_energy_device(hass: HomeAssistant, entry: ConfigEntry) -> 
         )
 
 
+def _cleanup_legacy_helper_device(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Remove the legacy (DOMAIN, entry_id) device if it has no entities.
+
+    Before v0.10.0, all cost sensors lived under a helper-owned device
+    identified by (DOMAIN, entry_id).  Now sensors attach directly to
+    the source power/energy sensor's device via self.device_entry.
+    The old device becomes an empty orphan after the first restart.
+    """
+    device_registry = dr.async_get(hass)
+    old_device = device_registry.async_get_device(
+        identifiers={(DOMAIN, entry.entry_id)}
+    )
+    if old_device is None:
+        return
+
+    entity_registry = er.async_get(hass)
+    if er.async_entries_for_device(entity_registry, old_device.id):
+        _LOGGER.debug(
+            "Skipping removal of legacy device %s — it still has entities",
+            old_device.id,
+        )
+        return
+
+    device_registry.async_remove_device(old_device.id)
+    _LOGGER.info(
+        "Removed legacy helper device %s (entry_id: %s)",
+        old_device.id,
+        entry.entry_id,
+    )
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up Dynamic Energy Cost from a config entry."""
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
@@ -195,6 +226,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     except Exception as e:
         _LOGGER.error("Failed to set up sensor platform, error: %s", str(e))
         return False
+
+    # Clean up old (DOMAIN, entry_id) device after sensor platform has
+    # re-registered entities under the source device via device_entry.
+    _cleanup_legacy_helper_device(hass, entry)
 
     _LOGGER.info("Dynamic Energy Cost setup completed successfully")
     return True

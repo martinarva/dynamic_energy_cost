@@ -7,12 +7,21 @@ import voluptuous as vol
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant, callback
-from homeassistant.helpers import entity_platform
+from homeassistant.helpers import (
+    device_registry as dr,
+    entity_platform,
+    entity_registry as er,
+)
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.template import is_number
 from homeassistant.util.dt import now
+
+try:
+    from homeassistant.helpers.device import async_entity_id_to_device
+except ImportError:
+    async_entity_id_to_device = None
 
 from .const import (
     QUARTERLY,
@@ -40,6 +49,21 @@ INTERVALS = [QUARTERLY, HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
 
 _LOGGER = logging.getLogger(__name__)
 REALTIME_COST_PRECISION = Decimal("0.0001")
+
+
+def _resolve_source_device(hass: HomeAssistant, source_entity_id: str):
+    """Return the DeviceEntry for a source entity, or None."""
+    if not source_entity_id:
+        return None
+    if async_entity_id_to_device is not None:
+        return async_entity_id_to_device(hass, source_entity_id)
+    # HA < 2025.8 fallback
+    ent_reg = er.async_get(hass)
+    entry = ent_reg.async_get(source_entity_id)
+    if entry and entry.device_id:
+        dev_reg = dr.async_get(hass)
+        return dev_reg.async_get(entry.device_id)
+    return None
 
 
 def interval_display_name(interval: str) -> str:
@@ -184,6 +208,9 @@ class RealTimeCostSensor(SensorEntity):
         # Prepare a device name using the friendly base part
         self._device_name = friendly_name + " Dynamic Energy Cost"
 
+        # Link to the source power sensor's device when available
+        self.device_entry = _resolve_source_device(hass, power_sensor_id)
+
     @property
     def unique_id(self):
         """Return a unique identifier for this sensor."""
@@ -191,7 +218,9 @@ class RealTimeCostSensor(SensorEntity):
 
     @property
     def device_info(self):
-        """Return device information to link this sensor with the integration."""
+        """Fallback device info when source sensor has no device."""
+        if self.device_entry is not None:
+            return None
         return {
             "identifiers": {(DOMAIN, self._config_entry.entry_id)},
             "name": self._device_name,
@@ -320,6 +349,9 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         )
         self._device_name = friendly_name + " Dynamic Energy Cost"
 
+        # Link to the source energy sensor's device when available
+        self.device_entry = _resolve_source_device(hass, energy_sensor_id)
+
     @property
     def unique_id(self):
         """Return a unique identifier for this sensor."""
@@ -327,7 +359,9 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
 
     @property
     def device_info(self):
-        """Return device information to link this sensor with the integration."""
+        """Fallback device info when source sensor has no device."""
+        if self.device_entry is not None:
+            return None
         return {
             "identifiers": {(DOMAIN, self._config_entry.entry_id)},
             "name": self._device_name,
@@ -490,6 +524,8 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
         super().__init__(hass, interval)
         self._real_time_cost_sensor = real_time_cost_sensor
         self._last_cost_rate: Decimal | None = None
+        # Power cost follows the same source device as realtime cost
+        self.device_entry = real_time_cost_sensor.device_entry
         base_name = real_time_cost_sensor.name.replace(
             " Real Time Energy Cost", ""
         ).strip()
