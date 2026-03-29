@@ -33,6 +33,7 @@ from .const import (
     MANUAL,
     MONTHLY,
     POWER_SENSOR,
+    REAL_TIME,
     SERVICE_RESET_COST,
     SERVICE_CALIBRATE,
     WEEKLY,
@@ -42,6 +43,7 @@ from . import (
     get_entry_config,
     get_interval_cost_unique_id,
     get_realtime_unique_id,
+    get_selected_sensors,
 )
 from .entity import BaseUtilitySensor
 
@@ -135,6 +137,7 @@ async def async_setup_entry(
     """Sensor platform setup based on user configuration."""
     data = get_entry_config(config_entry)
     electricity_price_sensor = data[ELECTRICITY_PRICE_SENSOR]
+    selected = get_selected_sensors(config_entry)
     sensors = []
 
     if data.get(POWER_SENSOR):
@@ -146,17 +149,21 @@ async def async_setup_entry(
             electricity_price_sensor,
             power_sensor,
         )
+        # Always add RealTimeCostSensor — normalization ensures it's in
+        # selected whenever any power interval is selected.
         sensors.append(real_time_cost_sensor)
 
+        selected_intervals = [i for i in INTERVALS if i in selected]
         utility_sensors = [
             PowerCostSensor(hass, real_time_cost_sensor, interval)
-            for interval in INTERVALS
+            for interval in selected_intervals
         ]
         sensors.extend(utility_sensors)
 
     if data.get(ENERGY_SENSOR):
         # Setup energy-based sensors
         energy_sensor = data[ENERGY_SENSOR]
+        selected_intervals = [i for i in INTERVALS if i in selected]
         utility_sensors = [
             EnergyCostSensor(
                 hass,
@@ -165,7 +172,7 @@ async def async_setup_entry(
                 electricity_price_sensor,
                 interval,
             )
-            for interval in INTERVALS
+            for interval in selected_intervals
         ]
         sensors.extend(utility_sensors)
 

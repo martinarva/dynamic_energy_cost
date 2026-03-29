@@ -15,7 +15,16 @@ from homeassistant.helpers.schema_config_entry_flow import SchemaFlowError
 
 import voluptuous as vol
 
-from .const import DOMAIN, ELECTRICITY_PRICE_SENSOR, ENERGY_SENSOR, POWER_SENSOR
+from .const import (
+    DOMAIN,
+    ELECTRICITY_PRICE_SENSOR,
+    ENERGY_SENSOR,
+    POWER_SENSOR,
+    REAL_TIME,
+    SELECTED_SENSORS,
+    SENSOR_LABELS,
+)
+from . import get_selected_sensors, INTERVALS
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -126,11 +135,68 @@ def _schema(
     return vol.Schema(schema_dict)
 
 
+def _sensor_options(is_power: bool) -> list[selector.SelectOptionDict]:
+    """Return the available sensor options based on sensor type.
+
+    Real Time Cost is not shown as a selectable option for power sensors —
+    it is always created automatically. Only interval sensors are selectable.
+    """
+    keys = list(INTERVALS)
+    return [
+        selector.SelectOptionDict(value=key, label=SENSOR_LABELS[key])
+        for key in keys
+    ]
+
+
+def _sensor_selection_schema(
+    is_power: bool,
+    defaults: list[str] | None = None,
+) -> vol.Schema:
+    """Build the sensor selection schema."""
+    options = _sensor_options(is_power)
+    all_values = [opt["value"] for opt in options]
+    # Filter out real_time from defaults — it's not a selectable option
+    if defaults is not None:
+        defaults = [d for d in defaults if d != REAL_TIME]
+    return vol.Schema(
+        {
+            vol.Required(
+                SELECTED_SENSORS,
+                default=defaults if defaults is not None else all_values,
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=options,
+                    multiple=True,
+                    mode=selector.SelectSelectorMode.LIST,
+                )
+            )
+        }
+    )
+
+
+def _normalize_sensor_selection(
+    selected: list[str], is_power: bool
+) -> list[str]:
+    """Normalize sensor selection.
+
+    For power path, auto-include real_time when any interval is selected.
+    """
+    result = set(selected)
+    if is_power and any(i in result for i in INTERVALS):
+        result.add(REAL_TIME)
+    return sorted(result)
+
+
 class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Dynamic Energy Cost."""
 
     VERSION = 3
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
+
+    def __init__(self) -> None:
+        """Initialize config flow."""
+        super().__init__()
+        self._user_input: dict[str, Any] | None = None
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
@@ -141,11 +207,8 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.info("Received user input: %s", user_input)
             try:
                 config = _validate_config(user_input)
-                _LOGGER.info("Config entry created successfully")
-                return self.async_create_entry(
-                    title=f"Dynamic Energy Cost - {config['integration_description']}",
-                    data=config,
-                )
+                self._user_input = config
+                return await self.async_step_sensors()
             except SchemaFlowError as err:
                 _LOGGER.warning("Config flow validation error: %s", err)
                 errors["base"] = str(err)
@@ -157,12 +220,38 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=self.add_suggested_values_to_schema(_schema(), user_input),
             errors=errors,
+            last_step=False,
             description_placeholders={
                 "integration_description": "Name to append the integration title",
                 "electricity_price_sensor": "Electricity Price Sensor",
                 "power_sensor": "Power Usage Sensor",
                 "energy_sensor": "Energy (kWh) Sensor",
             },
+        )
+
+    async def async_step_sensors(self, user_input=None):
+        """Handle the sensor selection step."""
+        assert self._user_input is not None
+        is_power = bool(self._user_input.get(POWER_SENSOR))
+        errors = {}
+
+        if user_input is not None:
+            selected = user_input.get(SELECTED_SENSORS, [])
+            if not selected:
+                errors["base"] = "no_sensors_selected"
+            else:
+                normalized = _normalize_sensor_selection(selected, is_power)
+                self._user_input[SELECTED_SENSORS] = normalized
+                _LOGGER.info("Config entry created successfully")
+                return self.async_create_entry(
+                    title=f"Dynamic Energy Cost - {self._user_input['integration_description']}",
+                    data=self._user_input,
+                )
+
+        return self.async_show_form(
+            step_id="sensors",
+            data_schema=_sensor_selection_schema(is_power),
+            errors=errors,
         )
 
     @staticmethod
@@ -178,6 +267,7 @@ class DynamicEnergyCostOptionsFlow(config_entries.OptionsFlow):
         """Initialize options flow."""
         super().__init__()
         self._config_entry = config_entry
+        self._user_input: dict[str, Any] | None = None
 
     async def async_step_init(self, user_input=None):
         """Manage the options."""
@@ -197,7 +287,8 @@ class DynamicEnergyCostOptionsFlow(config_entries.OptionsFlow):
             except vol.Invalid:
                 errors["base"] = "invalid_entity"
             else:
-                return self.async_create_entry(title="", data=config)
+                self._user_input = config
+                return await self.async_step_sensors()
 
         return self.async_show_form(
             step_id="user",
@@ -205,5 +296,28 @@ class DynamicEnergyCostOptionsFlow(config_entries.OptionsFlow):
                 _schema(current_values, use_defaults=False),
                 user_input or current_values,
             ),
+            errors=errors,
+            last_step=False,
+        )
+
+    async def async_step_sensors(self, user_input=None):
+        """Handle the sensor selection step."""
+        assert self._user_input is not None
+        is_power = bool(self._user_input.get(POWER_SENSOR))
+        errors = {}
+
+        if user_input is not None:
+            selected = user_input.get(SELECTED_SENSORS, [])
+            if not selected:
+                errors["base"] = "no_sensors_selected"
+            else:
+                normalized = _normalize_sensor_selection(selected, is_power)
+                self._user_input[SELECTED_SENSORS] = normalized
+                return self.async_create_entry(title="", data=self._user_input)
+
+        current_selected = list(get_selected_sensors(self._config_entry))
+        return self.async_show_form(
+            step_id="sensors",
+            data_schema=_sensor_selection_schema(is_power, defaults=current_selected),
             errors=errors,
         )

@@ -11,15 +11,50 @@
           "power_sensor": "Enhets-ID för effektanvändningssensor (W) - Valfritt om energisensor tillhandahålls",
           "energy_sensor": "Enhets-ID för energianvändningssensor (kWh) - Valfritt om effektsensor tillhandahålls"
         }
+      },
+      "sensors": {
+        "title": "Välj kostnadssensorer",
+        "description": "Välj de intervallkostnadssensorer du vill skapa. Varje sensor ackumulerar kostnader under sin tidsperiod och återställs automatiskt. För effektsensorer skapas en realtidskostnadssensor (aktuell kostnad per timme) alltid automatiskt.",
+        "data": {
+          "selected_sensors": "Sensorer att skapa"
+        }
       }
     },
     "error": {
       "invalid_entity": "Ogiltigt enhets-ID angivet.",
       "invalid_config": "Välj antingen en effektsensor eller en energisensor.",
-      "missing_sensor": "Ange minst en effektsensor eller en energisensor."
+      "missing_sensor": "Ange minst en effektsensor eller en energisensor.",
+      "no_sensors_selected": "Välj minst en sensor."
     },
     "progress": {
       "Success": "Din integration för Dynamisk Energikostnad är nu konfigurerad."
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "title": "Konfigurera din integration för Dynamisk Energikostnad",
+        "description": "Välj antingen en effektsensor (W) eller en energisensor (kWh), tillsammans med prissensorn (SEK/kWh).",
+        "data": {
+          "integration_description": "Namn att lägga till i integrationstiteln",
+          "electricity_price_sensor": "Enhets-ID för elprissensor (SEK/kWh)",
+          "power_sensor": "Enhets-ID för effektanvändningssensor (W) - Valfritt om energisensor tillhandahålls",
+          "energy_sensor": "Enhets-ID för energianvändningssensor (kWh) - Valfritt om effektsensor tillhandahålls"
+        }
+      },
+      "sensors": {
+        "title": "Välj kostnadssensorer",
+        "description": "Välj de intervallkostnadssensorer du vill skapa. Varje sensor ackumulerar kostnader under sin tidsperiod och återställs automatiskt. För effektsensorer skapas en realtidskostnadssensor (aktuell kostnad per timme) alltid automatiskt.",
+        "data": {
+          "selected_sensors": "Sensorer att skapa"
+        }
+      }
+    },
+    "error": {
+      "invalid_entity": "Ogiltigt enhets-ID angivet.",
+      "invalid_config": "Välj antingen en effektsensor eller en energisensor.",
+      "missing_sensor": "Ange minst en effektsensor eller en energisensor.",
+      "no_sensors_selected": "Välj minst en sensor."
     }
   }
 }

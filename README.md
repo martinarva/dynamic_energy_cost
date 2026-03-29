@@ -44,6 +44,7 @@ Key improvements since the early releases:
 - **Real-Time Cost Sensor (only Power Based):** Calculates energy costs in real-time based on current power usage in watts (W) and electricity prices.
 - **15-Minute, Hourly, Daily, Weekly, Monthly and Yearly Cost (Energy and Power Based):** Automatically generates interval-based accumulated cost sensors for detailed energy expense tracking.
 - **Sensor without reset interval (Energy and Power Based)** Similar to the above, but does not reset automatically. It resets only when the service `dynamic_energy_cost.reset_cost` is called. Making it perfect for calculating specific costs, such as the expenses for individual charging sessions of an electric car.
+- **Customizable sensor selection:** Choose which cost sensors to create during setup. All sensors are selected by default, but you can deselect any you don't need. The selection can be changed later via the options flow.
 - **Enhanced Sensor Attributes:** Energy Based Sensors include attributes for total energy used (kWh) and the average energy price, aiding in energy usage optimization during cheaper hours.
 - **Statistics-friendly reset metadata:** Interval cost sensors expose `last_reset`, and resetting cost sensors now behave better with Home Assistant statistics consumers.
 
@@ -112,12 +113,16 @@ After installation, please restart Home Assistant. To add Dynamic Energy Cost to
 
 ## Configure Sensors
 
-When setting up the integration, you will be prompted to provide the following:
+When setting up the integration, you will go through two steps:
 
-- Input the entity IDs
-  - **Electricity Price Sensor:** Sensor that provides the current electricity price (for example Nordpool, Ember, ... fixed price, day/night).
-  - **Power/Energy Usage Sensor:** Ensure the sensor measures in Watts (W) for power or kilowatt-hours (kWh) for energy. Prefer the energy sensor option when both are available.
-- Submit to complete the integration setup.
+**Step 1 — Source sensors:**
+- **Electricity Price Sensor:** Sensor that provides the current electricity price (for example Nordpool, Ember, ... fixed price, day/night).
+- **Power/Energy Usage Sensor:** Ensure the sensor measures in Watts (W) for power or kilowatt-hours (kWh) for energy. Prefer the energy sensor option when both are available.
+
+**Step 2 — Sensor selection:**
+- Choose which cost sensors to create. All sensors are selected by default.
+- For power sensors, the Real Time Cost sensor is automatically included when any interval sensor is selected.
+- You can change this selection later via Settings → Devices & Services → Configure.
 
 ### Recommended setup
 

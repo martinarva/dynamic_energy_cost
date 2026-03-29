@@ -11,15 +11,50 @@
           "power_sensor": "Energieverbruiksensor-entiteits-ID (W) - Optioneel als er een energiesensor is voorzien",
           "energy_sensor": "Energieverbruiksensor-entiteits-ID (kWh) - Optioneel als er een vermogenssensor is voorzien"
         }
+      },
+      "sensors": {
+        "title": "Selecteer kostensensoren",
+        "description": "Selecteer de interval kostensensoren die u wilt aanmaken. Elke sensor verzamelt kosten over zijn tijdsperiode en wordt automatisch gereset. Bij vermogenssensoren wordt een realtime kostensensor (huidige kosten per uur) altijd automatisch aangemaakt.",
+        "data": {
+          "selected_sensors": "Aan te maken sensoren"
+        }
       }
     },
     "error": {
       "invalid_entity": "Ongeldige entiteits-ID opgegeven.",
       "invalid_config": "Gelieve een vermogenssensor of een energiesensor te kiezen.",
-      "missing_sensor": "Gelieve een vermogenssensor of een energiesensor in te geven."
+      "missing_sensor": "Gelieve een vermogenssensor of een energiesensor in te geven.",
+      "no_sensors_selected": "Selecteer ten minste één sensor."
     },
     "progress": {
       "Success": "Your Dynamic Energy Cost Integration is nu configured."
+    }
+  },
+  "options": {
+    "step": {
+      "user": {
+        "title": "Configureer uw Dynamic Energy Cost Integration",
+        "description": "Selecteer een vermogenssensor (W) of een energiesensor (kWh), samen met de prijssensor (EUR/kWh).",
+        "data": {
+          "integration_description": "Titel voor de integratie",
+          "electricity_price_sensor": "Elektriciteitsprijssensor Entiteits-ID (eur/kWh)",
+          "power_sensor": "Energieverbruiksensor-entiteits-ID (W) - Optioneel als er een energiesensor is voorzien",
+          "energy_sensor": "Energieverbruiksensor-entiteits-ID (kWh) - Optioneel als er een vermogenssensor is voorzien"
+        }
+      },
+      "sensors": {
+        "title": "Selecteer kostensensoren",
+        "description": "Selecteer de interval kostensensoren die u wilt aanmaken. Elke sensor verzamelt kosten over zijn tijdsperiode en wordt automatisch gereset. Bij vermogenssensoren wordt een realtime kostensensor (huidige kosten per uur) altijd automatisch aangemaakt.",
+        "data": {
+          "selected_sensors": "Aan te maken sensoren"
+        }
+      }
+    },
+    "error": {
+      "invalid_entity": "Ongeldige entiteits-ID opgegeven.",
+      "invalid_config": "Gelieve een vermogenssensor of een energiesensor te kiezen.",
+      "missing_sensor": "Gelieve een vermogenssensor of een energiesensor in te geven.",
+      "no_sensors_selected": "Selecteer ten minste één sensor."
     }
   }
 }

@@ -10,7 +10,18 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
-from .const import DAILY, DOMAIN, HOURLY, MANUAL, MONTHLY, QUARTERLY, WEEKLY, YEARLY
+from .const import (
+    DAILY,
+    DOMAIN,
+    HOURLY,
+    MANUAL,
+    MONTHLY,
+    QUARTERLY,
+    REAL_TIME,
+    SELECTED_SENSORS,
+    WEEKLY,
+    YEARLY,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,6 +33,25 @@ INTERVALS = [QUARTERLY, HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
 def get_entry_config(entry: ConfigEntry) -> dict[str, Any]:
     """Return merged config entry data and options."""
     return {**entry.data, **entry.options}
+
+
+def get_selected_sensors(entry: ConfigEntry) -> set[str]:
+    """Return the set of selected sensor keys.
+
+    Reads from entry.options first, then entry.data, then defaults to all
+    sensors for backward compatibility with existing installations.
+    """
+    selected = entry.options.get(SELECTED_SENSORS)
+    if selected is None:
+        selected = entry.data.get(SELECTED_SENSORS)
+
+    if selected is None:
+        config = get_entry_config(entry)
+        if config.get("power_sensor"):
+            return {REAL_TIME} | set(INTERVALS)
+        return set(INTERVALS)
+
+    return set(selected)
 
 
 def get_realtime_unique_id(entry_id: str) -> str:
@@ -89,12 +119,25 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
         hass.config_entries.async_update_entry(entry, title=title)
 
     entity_registry = er.async_get(hass)
-    if not config.get("power_sensor"):
-        realtime_entity_id = entity_registry.async_get_entity_id(
-            "sensor", DOMAIN, get_realtime_unique_id(entry.entry_id)
-        )
-        if realtime_entity_id is not None:
-            entity_registry.async_remove(realtime_entity_id)
+    selected = get_selected_sensors(entry)
+
+    # Build sensor_key -> unique_id map for all possible sensors.
+    # Always include real_time — it may need cleanup when switching
+    # from power to energy path.
+    possible: dict[str, str] = {
+        REAL_TIME: get_realtime_unique_id(entry.entry_id),
+    }
+    for interval in INTERVALS:
+        possible[interval] = get_interval_cost_unique_id(entry.entry_id, interval)
+
+    # Remove entities for deselected sensors
+    for key, unique_id in possible.items():
+        if key not in selected:
+            entity_id = entity_registry.async_get_entity_id(
+                "sensor", DOMAIN, unique_id
+            )
+            if entity_id is not None:
+                entity_registry.async_remove(entity_id)
 
     await hass.config_entries.async_reload(entry.entry_id)
 
