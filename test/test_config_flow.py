@@ -31,7 +31,7 @@ ALL_INTERVALS = [QUARTERLY, HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
 # real_time is no longer a selectable option — it's always auto-included for power path
 ALL_SELECTABLE = sorted(ALL_INTERVALS)
 # After normalization, power path results include REAL_TIME
-ALL_POWER_NORMALIZED = sorted(ALL_INTERVALS + [REAL_TIME])
+ALL_POWER_NORMALIZED = sorted([*ALL_INTERVALS, REAL_TIME])
 
 
 def _base_user_input(**overrides):

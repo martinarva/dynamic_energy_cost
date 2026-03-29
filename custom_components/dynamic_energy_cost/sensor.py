@@ -33,7 +33,6 @@ from .const import (
     MANUAL,
     MONTHLY,
     POWER_SENSOR,
-    REAL_TIME,
     SERVICE_RESET_COST,
     SERVICE_CALIBRATE,
     WEEKLY,
