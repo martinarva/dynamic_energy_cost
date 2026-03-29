@@ -143,8 +143,7 @@ def _sensor_options(is_power: bool) -> list[selector.SelectOptionDict]:
     """
     keys = list(INTERVALS)
     return [
-        selector.SelectOptionDict(value=key, label=SENSOR_LABELS[key])
-        for key in keys
+        selector.SelectOptionDict(value=key, label=SENSOR_LABELS[key]) for key in keys
     ]
 
 
@@ -174,9 +173,7 @@ def _sensor_selection_schema(
     )
 
 
-def _normalize_sensor_selection(
-    selected: list[str], is_power: bool
-) -> list[str]:
+def _normalize_sensor_selection(selected: list[str], is_power: bool) -> list[str]:
     """Normalize sensor selection.
 
     For power path, auto-include real_time when any interval is selected.

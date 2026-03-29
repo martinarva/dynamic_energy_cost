@@ -375,7 +375,11 @@ async def test_config_flow_power_path_defaults_exclude_real_time(hass):
     selected_key = next(
         key for key in schema if getattr(key, "schema", None) == SELECTED_SENSORS
     )
-    default_value = selected_key.default() if callable(selected_key.default) else selected_key.default
+    default_value = (
+        selected_key.default()
+        if callable(selected_key.default)
+        else selected_key.default
+    )
     assert REAL_TIME not in default_value
     assert set(default_value) == set(ALL_SELECTABLE)
 
@@ -399,7 +403,11 @@ async def test_config_flow_energy_path_excludes_real_time_option(hass):
     selected_key = next(
         key for key in schema if getattr(key, "schema", None) == SELECTED_SENSORS
     )
-    default_value = selected_key.default() if callable(selected_key.default) else selected_key.default
+    default_value = (
+        selected_key.default()
+        if callable(selected_key.default)
+        else selected_key.default
+    )
     assert REAL_TIME not in default_value
 
 
@@ -499,5 +507,9 @@ async def test_options_flow_shows_current_selection_as_defaults(hass):
         key for key in schema if getattr(key, "schema", None) == SELECTED_SENSORS
     )
     # Defaults should match the current selection minus real_time (not selectable)
-    default_value = selected_key.default() if callable(selected_key.default) else selected_key.default
+    default_value = (
+        selected_key.default()
+        if callable(selected_key.default)
+        else selected_key.default
+    )
     assert set(default_value) == {DAILY, MONTHLY}

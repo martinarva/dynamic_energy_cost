@@ -133,9 +133,7 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     # Remove entities for deselected sensors
     for key, unique_id in possible.items():
         if key not in selected:
-            entity_id = entity_registry.async_get_entity_id(
-                "sensor", DOMAIN, unique_id
-            )
+            entity_id = entity_registry.async_get_entity_id("sensor", DOMAIN, unique_id)
             if entity_id is not None:
                 entity_registry.async_remove(entity_id)
 
