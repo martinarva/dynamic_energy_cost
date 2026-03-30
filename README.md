@@ -1,19 +1,28 @@
 <div align="center">
   <br>
-  <img src="docs/source/img/DynamicEnergyCost_Icon100.png">
+  <img src="docs/source/img/DynamicEnergyCost_Icon100.png" alt="Dynamic Energy Cost icon" width="100">
+
   <h1>Dynamic Energy Cost</h1>
   <strong>HACS integration for Home Assistant</strong>
+
+  <p>
+    <a href="https://analytics.home-assistant.io/">
+      <img alt="dynamic_energy_cost usage" src="https://img.shields.io/badge/dynamic/json?color=41BDF5&logo=home-assistant&label=integration%20usage&suffix=%20installs&cacheSeconds=15600&url=https://analytics.home-assistant.io/custom_integrations.json&query=$.dynamic_energy_cost.total">
+    </a>
+    <a href="https://gitlocalize.com/repo/10085?utm_source=badge">
+      <img alt="GitLocalize" src="https://gitlocalize.com/repo/10085/whole_project/badge.svg">
+    </a>
+    <a href="https://github.com/martinarva/dynamic_energy_cost/blob/main/LICENSE">
+      <img alt="License" src="https://img.shields.io/github/license/martinarva/dynamic_energy_cost">
+    </a>
+    <a href="https://github.com/martinarva/dynamic_energy_cost/releases/latest">
+      <img alt="Latest release" src="https://img.shields.io/github/v/release/martinarva/dynamic_energy_cost">
+    </a>
+  </p>
 </div>
-<a href="https://gitlocalize.com/repo/10085?utm_source=badge"> <img src="https://gitlocalize.com/repo/10085/whole_project/badge.svg" /> </a>
-<a style="text-decoration:none" href="https://github.com/martinarva/dynamic_energy_cost/blob/main/LICENSE">
-    <img alt="GitHub" src="https://img.shields.io/github/license/martinarva/dynamic_energy_cost">
-  </a>
-<a href="https://github.com/martinarva/dynamic_energy_cost/releases/latest">
-    <img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/martinarva/dynamic_energy_cost">
-  </a>
+
 <p align="center">
-    <img src="https://skills.syvixor.com/api/icons?i=github,homeassistant,hacs,python,gitlocalize" />
-  </a>
+  <img src="https://skills.syvixor.com/api/icons?i=github,homeassistant,hacs,python,gitlocalize" />
 </p>
 
 This Home Assistant custom integration provides a sophisticated real-time and cumulative energy cost tracking solution, ideal for monitoring electricity expenses related to fluctuating prices and varying energy consumption levels. It's specifically crafted to handle dynamic electricity prices such as those from [Nord Pool](https://www.home-assistant.io/integrations/nordpool/), [Amber](https://www.home-assistant.io/integrations/amberelectric/), [Tibber](https://www.home-assistant.io/integrations/tibber), ...
