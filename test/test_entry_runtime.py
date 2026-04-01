@@ -315,6 +315,44 @@ async def test_cost_sensors_fallback_device_without_source_device(hass):
     assert realtime.device_info is not None
     assert realtime.device_info["identifiers"] == {(DOMAIN, "entry-789")}
 
+    # All PowerCostSensors must also get the same fallback device_info
+    power_costs = [s for s in sensors if isinstance(s, PowerCostSensor)]
+    assert len(power_costs) > 0
+    for sensor in power_costs:
+        assert sensor.device_entry is None
+        assert sensor.device_info is not None
+        assert sensor.device_info["identifiers"] == {(DOMAIN, "entry-789")}
+        assert sensor.device_info["name"] == realtime.device_info["name"]
+
+
+async def test_power_cost_device_info_independent_of_realtime_mutation(hass):
+    """PowerCostSensor device_info must not break when HA mutates RealTimeCostSensor.device_entry."""
+    entry = MockConfigEntry(domain=DOMAIN, data=_entry_data(), entry_id="entry-timing")
+    entry.add_to_hass(hass)
+
+    async_add_entities = Mock()
+    with patch(
+        "custom_components.dynamic_energy_cost.sensor.register_entity_services",
+        AsyncMock(),
+    ):
+        await sensor_async_setup_entry(hass, entry, async_add_entities)
+
+    sensors = async_add_entities.call_args.args[0]
+    realtime = next(s for s in sensors if isinstance(s, RealTimeCostSensor))
+    power_cost = next(s for s in sensors if isinstance(s, PowerCostSensor))
+
+    # Both start with no device
+    assert realtime.device_entry is None
+    assert power_cost.device_entry is None
+    assert power_cost.device_info is not None
+
+    # Simulate HA setting device_entry on realtime after creating fallback device
+    realtime.device_entry = Mock()
+
+    # PowerCostSensor must still return fallback device_info
+    assert power_cost.device_info is not None
+    assert power_cost.device_info["identifiers"] == {(DOMAIN, "entry-timing")}
+
 
 async def test_energy_sensors_link_to_source_device(hass):
     """Energy cost sensors attach to the source energy sensor's device."""

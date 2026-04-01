@@ -67,6 +67,21 @@ def _resolve_source_device(hass: HomeAssistant, source_entity_id: str):
     return None
 
 
+def _fallback_device_info(config_entry, device_name, device_entry):
+    """Return fallback device info when source sensor has no device.
+
+    Each sensor class must call this with its *own* device_entry to
+    avoid coupling to another entity's mutable runtime state.
+    """
+    if device_entry is not None:
+        return None
+    return {
+        "identifiers": {(DOMAIN, config_entry.entry_id)},
+        "name": device_name,
+        "manufacturer": "Custom Integration",
+    }
+
+
 def interval_display_name(interval: str) -> str:
     """Return a user-facing label for an interval."""
     if interval == QUARTERLY:
@@ -243,13 +258,9 @@ class RealTimeCostSensor(SensorEntity):
     @property
     def device_info(self):
         """Fallback device info when source sensor has no device."""
-        if self.device_entry is not None:
-            return None
-        return {
-            "identifiers": {(DOMAIN, self._config_entry.entry_id)},
-            "name": self._device_name,
-            "manufacturer": "Custom Integration",
-        }
+        return _fallback_device_info(
+            self._config_entry, self._device_name, self.device_entry
+        )
 
     @property
     def name(self):
@@ -387,13 +398,9 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
     @property
     def device_info(self):
         """Fallback device info when source sensor has no device."""
-        if self.device_entry is not None:
-            return None
-        return {
-            "identifiers": {(DOMAIN, self._config_entry.entry_id)},
-            "name": self._device_name,
-            "manufacturer": "Custom Integration",
-        }
+        return _fallback_device_info(
+            self._config_entry, self._device_name, self.device_entry
+        )
 
     @property
     def state_class(self):
@@ -560,6 +567,8 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
         self._last_cost_rate: Decimal | None = None
         # Power cost follows the same source device as realtime cost
         self.device_entry = real_time_cost_sensor.device_entry
+        self._config_entry = real_time_cost_sensor._config_entry
+        self._device_name = real_time_cost_sensor._device_name
         base_name = real_time_cost_sensor.name.replace(
             " Real Time Energy Cost", ""
         ).strip()
@@ -678,8 +687,10 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
 
     @property
     def device_info(self):
-        """Link this sensor to the real-time cost sensor's device."""
-        return self._real_time_cost_sensor.device_info
+        """Fallback device info when source sensor has no device."""
+        return _fallback_device_info(
+            self._config_entry, self._device_name, self.device_entry
+        )
 
     @property
     def state_class(self):
