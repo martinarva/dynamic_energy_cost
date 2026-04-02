@@ -25,61 +25,28 @@
   <img src="https://skills.syvixor.com/api/icons?i=github,homeassistant,hacs,python,gitlocalize" />
 </p>
 
-This Home Assistant custom integration provides a sophisticated real-time and cumulative energy cost tracking solution, ideal for monitoring electricity expenses related to fluctuating prices and varying energy consumption levels. It's specifically crafted to handle dynamic electricity prices such as those from [Nord Pool](https://www.home-assistant.io/integrations/nordpool/), [Amber](https://www.home-assistant.io/integrations/amberelectric/), [Tibber](https://www.home-assistant.io/integrations/tibber), ...
+Track your real electricity costs in Home Assistant. Point this integration at a **price sensor** and a **power or energy sensor** and it creates cost sensors that follow your actual dynamic tariff — whether that comes from [Nord Pool](https://www.home-assistant.io/integrations/nordpool/), [Amber](https://www.home-assistant.io/integrations/amberelectric/), [Tibber](https://www.home-assistant.io/integrations/tibber), or any other source.
 
-## Project status
+## What you get
 
-This project is actively maintained. Release `v1.0.0` marks a stable, feature-complete baseline.
+- **Real-time cost** (power path) — see what you're paying right now, in currency per hour
+- **Interval cost sensors** — 15-minute, hourly, daily, weekly, monthly, and yearly accumulated costs
+- **Manual reset sensor** — never resets automatically; perfect for tracking a single EV charging session or appliance run
+- **Automatic unit conversion** — price in EUR/MWh or EUR/Wh? Energy in Wh or MWh? The integration detects and converts automatically
+- **Customizable sensor selection** — choose which cost sensors to create during setup; change it later via the options flow
+- **Source device integration** — cost sensors appear directly under your source device (heat pump, EV charger, etc.)
 
-Key improvements since the early releases:
+## What you need
 
-- cost sensors now attach directly to the source device (e.g. your heat pump or EV charger) instead of creating a separate "Dynamic Energy Cost" device
-- automatic unit conversion for both energy sensors (Wh/MWh to kWh) and price sensors (currency/MWh and currency/Wh to currency/kWh)
-- customizable sensor selection — choose which cost sensors to create during setup or later via options flow
-- config flow and options flow editing were stabilized
-- entity identity and migration behavior were improved
-- power-based cost tracking was hardened and made more precise
-- statistics/reset metadata was improved for interval sensors
-- currency is automatically picked up from your Home Assistant settings
-- orphaned devices from earlier versions are cleaned up automatically
+| Sensor | Required | Supported units |
+|---|---|---|
+| Electricity price | Yes | `currency/kWh`, `currency/MWh`, `currency/Wh` (any currency) |
+| Energy consumption | Recommended | `kWh`, `Wh`, `MWh` |
+| Power consumption | Alternative | `W` |
 
-## Quick start
+Use an **energy sensor** whenever one is available — it is more accurate and works like the HA Energy Dashboard. A **power sensor** is supported as a fallback but remains an approximation since it integrates instantaneous readings over time.
 
-- Use a dynamic electricity price sensor that already represents the final price you want to track.
-- Prefer an energy (`kWh`) sensor whenever one is available.
-- Use a power (`W`) sensor only as a fallback.
-- If you need tariffs, standing charges, VAT, gas conversion, or other custom business logic, build that into a separate template sensor first and feed the final result into this integration.
-
-## Features
-
-- **Real-Time Cost Sensor (only Power Based):** Calculates energy costs in real-time based on current power usage in watts (W) and electricity prices.
-- **15-Minute, Hourly, Daily, Weekly, Monthly and Yearly Cost (Energy and Power Based):** Automatically generates interval-based accumulated cost sensors for detailed energy expense tracking.
-- **Sensor without reset interval (Energy and Power Based)** Similar to the above, but does not reset automatically. It resets only when the service `dynamic_energy_cost.reset_cost` is called. Making it perfect for calculating specific costs, such as the expenses for individual charging sessions of an electric car.
-- **Customizable sensor selection:** Choose which cost sensors to create during setup. All sensors are selected by default, but you can deselect any you don't need. The selection can be changed later via the options flow.
-- **Enhanced Sensor Attributes:** Energy Based Sensors include attributes for total energy used (kWh) and the average energy price, aiding in energy usage optimization during cheaper hours.
-- **Statistics-friendly reset metadata:** Interval cost sensors expose `last_reset`, and resetting cost sensors now behave better with Home Assistant statistics consumers.
-
-## Best Practices
-
-Calculating energy cost from an energy (kWh) sensor is the preferred and recommended method. If an energy sensor is available, use it instead of a power sensor whenever possible.
-
-- **Use an energy sensor whenever you can.** A cumulative kWh sensor is more accurate, behaves more like the Home Assistant Energy Dashboard, and is less sensitive to restarts or sparse updates.
-- **Use a power sensor only as a fallback.** Power-based cost tracking integrates instantaneous W readings over time, so the final accuracy depends on how often the source sensor reports and how cleanly it reports changes.
-- **If you only have a power sensor, it is still supported.** The integration includes safeguards for spikes, restarts, and low-load precision, but it remains an approximation compared with kWh-based tracking.
-
-**Note:** It is important that only one type of sensor (either power or energy) is configured for this integration. Both cannot be used simultaneously.
-
-## Scope
-
-Dynamic Energy Cost is intentionally focused on turning a price sensor and a consumption sensor into cost sensors.
-
-It is not intended to be a full contract or utility billing engine. In particular, these are better handled outside the integration with template sensors, helpers, or automations:
-
-- standing charges
-- tariff blending / VAT / fixed margins
-- gas unit conversion (`m3` -> `kWh`)
-- solar self-consumption or export deduction logic
-- plan comparison against a different fixed-price contract
+Only one consumption sensor (energy or power) can be configured per entry.
 
 ## Installation
 
@@ -111,7 +78,7 @@ After installation, please restart Home Assistant. To add Dynamic Energy Cost to
 
 1. Download the [latest release of Dynamic Energy Cost](https://github.com/martinarva/dynamic_energy_cost/releases/latest) and extract its contents.
 2. Copy the `dynamic_energy_cost` folder into the `custom_components` directory located typically at `/config/custom_components/` in your Home Assistant directory.
-3. Restart Home Assistant to recognize the newly added custom component.  
+3. Restart Home Assistant to recognize the newly added custom component.
   <a href="https://my.home-assistant.io/redirect/developer_call_service/?service=homeassistant%2Erestart" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/developer_call_service.svg" alt="Open your Home Assistant instance and show your service developer tools with a specific action selected." /></a>
 
 ### Add Integration
@@ -122,12 +89,12 @@ After installation, please restart Home Assistant. To add Dynamic Energy Cost to
 
 </details>
 
-## Configure Sensors
+## Configuration
 
 When setting up the integration, you will go through two steps:
 
 **Step 1 — Source sensors:**
-- **Electricity Price Sensor:** Sensor that provides the current electricity price (for example Nordpool, Ember, ... fixed price, day/night).
+- **Electricity Price Sensor:** Sensor that provides the current electricity price (for example Nordpool, Amber, ... fixed price, day/night).
 - **Power/Energy Usage Sensor:** Power sensors must measure in Watts (W). Energy sensors can use kWh, Wh, or MWh (converted automatically). Prefer the energy sensor option when both are available.
 
 **Step 2 — Sensor selection:**
@@ -135,21 +102,48 @@ When setting up the integration, you will go through two steps:
 - For power sensors, the Real Time Cost sensor is automatically included when any interval sensor is selected.
 - You can change this selection later via Settings → Devices & Services → Configure.
 
-### Recommended setup
+## Tips
 
-Best option:
+- Use a price sensor that already represents the final price you want to track.
+- If you need tariffs, standing charges, VAT, or other custom logic, build that into a template sensor first and feed the result into this integration.
+- Energy-based sensors include attributes for total energy used (kWh) and average energy price, useful for optimizing usage during cheaper hours.
+- Interval cost sensors expose `last_reset` for compatibility with HA statistics consumers.
 
-- electricity price sensor (`EUR/kWh`, `EUR/MWh`, or `EUR/Wh` — converted automatically)
-- cumulative energy sensor (`kWh`, `Wh`, or `MWh` — converted automatically)
+## Services
 
-Fallback option:
+### Reset cost
 
-- electricity price sensor (`EUR/kWh`, `EUR/MWh`, or `EUR/Wh`)
-- power sensor (`W`)
+Reset an energy cost sensor to 0. Useful in automations or via Developer Tools → Services.
 
-The integration automatically detects the `unit_of_measurement` on both the price and energy sensors and converts to per-kWh internally. Any currency prefix is supported (EUR, SEK, USD, etc.).
+```yaml
+service: dynamic_energy_cost.reset_cost
+target:
+  entity_id: sensor.your_sensor_entity_id
+```
 
-The fallback works well for many setups, but it remains approximation-based because it integrates instantaneous power readings over time.
+### Calibrate
+
+Set the value of a cost sensor to a specific number.
+
+```yaml
+action: dynamic_energy_cost.calibrate
+target:
+  entity_id: sensor.your_sensor_entity_id
+data:
+  value: "100"
+```
+
+## Scope
+
+Dynamic Energy Cost is intentionally focused on turning a price sensor and a consumption sensor into cost sensors.
+
+It is not intended to be a full contract or utility billing engine. In particular, these are better handled outside the integration with template sensors, helpers, or automations:
+
+- standing charges
+- tariff blending / VAT / fixed margins
+- gas unit conversion (`m3` -> `kWh`)
+- solar self-consumption or export deduction logic
+- plan comparison against a different fixed-price contract
 
 ## Updating
 
@@ -160,44 +154,15 @@ The fallback works well for many setups, but it remains approximation-based beca
 
 To update the integration to a newer version:
 
-1. Download the [latest release of Dynamic Energy Cost](https://github.com/martinarva/dynamic_energy_cost/releases/latest) and extract its contents. 
-2. Go to your'e Home Assistant instance.
-3. Make sure to make a back up first.  
-  <a href="https://my.home-assistant.io/redirect/backup/" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/backup.svg" alt="Open your Home Assistant instance and show an overview of your backups." /></a>  
-4. Overwrite the `dynamic_energy_cost` folder into the `custom_components` directory located typically at `/config/custom_components/`.  
-5. Reboot Home Assistant.  
+1. Download the [latest release of Dynamic Energy Cost](https://github.com/martinarva/dynamic_energy_cost/releases/latest) and extract its contents.
+2. Go to your Home Assistant instance.
+3. Make sure to make a backup first.
+  <a href="https://my.home-assistant.io/redirect/backup/" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/backup.svg" alt="Open your Home Assistant instance and show an overview of your backups." /></a>
+4. Overwrite the `dynamic_energy_cost` folder into the `custom_components` directory located typically at `/config/custom_components/`.
+5. Reboot Home Assistant.
   <a href="https://my.home-assistant.io/redirect/developer_call_service/?service=homeassistant%2Erestart" target="_blank" rel="noreferrer noopener"><img src="https://my.home-assistant.io/badges/developer_call_service.svg" alt="Open your Home Assistant instance and show your service developer tools with a specific action selected." /></a>
 
 </details>
-
-## Resetting the cost sensors
-
-Dynamic Energy Cost provides a service `dynamic_energy_cost.reset_cost` which you can call to reset energy sensors to 0. You can call this service from the GUI (Developer tools -> Services) or use this in automations.
-
-```yaml
-service: dynamic_energy_cost.reset_cost
-target:
-  entity_id: sensor.your_sensor_entity_id
-```
-
-## Calibrating the cost sensors
-
-Dynamic Energy Cost provides a service `dynamic_energy_cost.calibrate` which you can call to change the value of a given sensor. You can call this service from the GUI (Developer tools -> Actions) or use this in automations.
-
-```yaml
-action: dynamic_energy_cost.calibrate
-target:
-  entity_id: sensor.your_sensor_entity_id
-data:
-  value: "100"
-```
-
-## Prerequisites
-
-- **Electricity Price Sensor:** A sensor that provides the current electricity price. Supported units: `currency/kWh`, `currency/MWh`, `currency/Wh` (converted automatically). Currency is taken from your Home Assistant settings.
-- **Power Usage Sensor (optional):** A sensor that monitors power usage in Watts (W).
-- **Energy Usage Sensor (optional):** A sensor that monitors energy consumption. Supported units: `kWh`, `Wh`, `MWh` (converted automatically).
-- **Virtual Energy Usage Sensor (optional):** Use a virtual energy sensor such as e.g. [Powercalc](https://docs.powercalc.nl/).
 
 ## Contribute
 
