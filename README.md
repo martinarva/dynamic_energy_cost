@@ -34,6 +34,8 @@ This project is actively maintained. Release `v1.0.0` marks a stable, feature-co
 Key improvements since the early releases:
 
 - cost sensors now attach directly to the source device (e.g. your heat pump or EV charger) instead of creating a separate "Dynamic Energy Cost" device
+- automatic unit conversion for both energy sensors (Wh/MWh to kWh) and price sensors (currency/MWh and currency/Wh to currency/kWh)
+- customizable sensor selection — choose which cost sensors to create during setup or later via options flow
 - config flow and options flow editing were stabilized
 - entity identity and migration behavior were improved
 - power-based cost tracking was hardened and made more precise
@@ -126,7 +128,7 @@ When setting up the integration, you will go through two steps:
 
 **Step 1 — Source sensors:**
 - **Electricity Price Sensor:** Sensor that provides the current electricity price (for example Nordpool, Ember, ... fixed price, day/night).
-- **Power/Energy Usage Sensor:** Ensure the sensor measures in Watts (W) for power or kilowatt-hours (kWh) for energy. Prefer the energy sensor option when both are available.
+- **Power/Energy Usage Sensor:** Power sensors must measure in Watts (W). Energy sensors can use kWh, Wh, or MWh (converted automatically). Prefer the energy sensor option when both are available.
 
 **Step 2 — Sensor selection:**
 - Choose which cost sensors to create. All sensors are selected by default.
@@ -137,13 +139,15 @@ When setting up the integration, you will go through two steps:
 
 Best option:
 
-- electricity price sensor (`EUR/kWh`)
-- cumulative energy sensor (`kWh`)
+- electricity price sensor (`EUR/kWh`, `EUR/MWh`, or `EUR/Wh` — converted automatically)
+- cumulative energy sensor (`kWh`, `Wh`, or `MWh` — converted automatically)
 
 Fallback option:
 
-- electricity price sensor (`EUR/kWh`)
+- electricity price sensor (`EUR/kWh`, `EUR/MWh`, or `EUR/Wh`)
 - power sensor (`W`)
+
+The integration automatically detects the `unit_of_measurement` on both the price and energy sensors and converts to per-kWh internally. Any currency prefix is supported (EUR, SEK, USD, etc.).
 
 The fallback works well for many setups, but it remains approximation-based because it integrates instantaneous power readings over time.
 
@@ -190,9 +194,9 @@ data:
 
 ## Prerequisites
 
-- **Electricity Price Sensor:** A sensor that provides the current electricity price per kWh (currency is taken from your Home Assistant settings).
+- **Electricity Price Sensor:** A sensor that provides the current electricity price. Supported units: `currency/kWh`, `currency/MWh`, `currency/Wh` (converted automatically). Currency is taken from your Home Assistant settings.
 - **Power Usage Sensor (optional):** A sensor that monitors power usage in Watts (W).
-- **Energy Usage Sensor (optional):** A sensor that monitors energy consumption in kilowatt-hours (kWh).
+- **Energy Usage Sensor (optional):** A sensor that monitors energy consumption. Supported units: `kWh`, `Wh`, `MWh` (converted automatically).
 - **Virtual Energy Usage Sensor (optional):** Use a virtual energy sensor such as e.g. [Powercalc](https://docs.powercalc.nl/).
 
 ## Contribute
