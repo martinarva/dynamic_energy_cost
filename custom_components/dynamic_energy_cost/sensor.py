@@ -115,6 +115,30 @@ def _energy_unit_conversion_factor(state) -> float:
     return _ENERGY_UNIT_TO_KWH.get(unit, 1.0)
 
 
+_PRICE_UNIT_TO_PER_KWH: dict[str, float] = {
+    "wh": 1000.0,
+    "kwh": 1.0,
+    "mwh": 0.001,
+}
+
+
+def _price_unit_conversion_factor(state) -> float:
+    """Return the factor to convert a price sensor's value to currency/kWh.
+
+    Parses unit_of_measurement (e.g. ``EUR/MWh``) and extracts the energy
+    denominator after the last ``/``.  Supports Wh, kWh and MWh in any
+    case.  Defaults to 1.0 when the unit is missing, has no slash, or
+    the energy part is unrecognised.
+    """
+    if state is None:
+        return 1.0
+    unit = state.attributes.get("unit_of_measurement", "")
+    if "/" not in unit:
+        return 1.0
+    energy_part = unit.rsplit("/", 1)[-1].strip().lower()
+    return _PRICE_UNIT_TO_PER_KWH.get(energy_part, 1.0)
+
+
 def _state_to_float(state) -> float | None:
     """Convert a Home Assistant state object to float if usable."""
     if state is None or state.state in (None, "unknown", "unavailable"):
@@ -297,9 +321,8 @@ class RealTimeCostSensor(SensorEntity):
             )
             return
 
-        electricity_price = _state_to_float(
-            self.hass.states.get(self._electricity_price_sensor_id)
-        )
+        price_state = self.hass.states.get(self._electricity_price_sensor_id)
+        electricity_price = _state_to_float(price_state)
         power_usage = _state_to_float(self.hass.states.get(self._power_sensor_id))
 
         if electricity_price is None or power_usage is None:
@@ -308,9 +331,11 @@ class RealTimeCostSensor(SensorEntity):
             )
             return
 
+        price_to_kwh = _price_unit_conversion_factor(price_state)
         try:
             calculated_cost = (
                 Decimal(str(electricity_price))
+                * Decimal(str(price_to_kwh))
                 * (Decimal(str(power_usage)) / Decimal("1000"))
             ).quantize(REALTIME_COST_PRECISION)
             if calculated_cost != self._state:
@@ -493,7 +518,8 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
             else:
                 energy_difference = current_energy - self._last_energy_reading
                 energy_difference_kwh = energy_difference * self._energy_to_kwh
-                cost_increment = energy_difference_kwh * price
+                price_to_kwh = _price_unit_conversion_factor(old_price_state)
+                cost_increment = energy_difference_kwh * price * price_to_kwh
                 self._cumulative_cost += cost_increment
                 self._state = self._cumulative_cost
                 self._cumulative_energy += energy_difference_kwh
@@ -514,7 +540,8 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         try:
             new_state = event.data.get("new_state")
             current_energy = _state_to_float(new_state)
-            price = _state_to_float(self.hass.states.get(self._price_sensor_id))
+            price_state = self.hass.states.get(self._price_sensor_id)
+            price = _state_to_float(price_state)
             # Re-resolve unit in case the sensor was unavailable at startup
             if self._energy_to_kwh == 1.0:
                 self._energy_to_kwh = _energy_unit_conversion_factor(new_state)
@@ -536,7 +563,8 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
 
             energy_difference = current_energy - self._last_energy_reading
             energy_difference_kwh = energy_difference * self._energy_to_kwh
-            cost_increment = energy_difference_kwh * price
+            price_to_kwh = _price_unit_conversion_factor(price_state)
+            cost_increment = energy_difference_kwh * price * price_to_kwh
             self._cumulative_cost += cost_increment
             self._cumulative_energy += energy_difference_kwh
             self._state = self._cumulative_cost
