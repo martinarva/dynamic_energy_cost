@@ -975,3 +975,151 @@ async def test_energy_sensor_converts_eur_per_wh(hass):
 
     # delta = 1 kWh; 0.0002 EUR/Wh = 0.2 EUR/kWh; cost = 0.2
     assert sensor._cumulative_cost == pytest.approx(0.2)
+
+
+# ---------------------------------------------------------------------------
+# Backward compatibility: no unit_of_measurement on price sensor
+# ---------------------------------------------------------------------------
+
+
+def test_realtime_sensor_no_price_unit_backward_compat(hass):
+    """Realtime cost works unchanged when price sensor has no unit_of_measurement."""
+    sensor = RealTimeCostSensor(
+        hass,
+        _entry(),
+        "sensor.electricity_price",
+        "sensor.heat_pump_power",
+    )
+    sensor.async_write_ha_state = Mock()
+
+    # No unit_of_measurement — most existing setups
+    hass.states.async_set("sensor.electricity_price", "0.25")
+    hass.states.async_set("sensor.heat_pump_power", "2000")
+
+    sensor.handle_state_change(
+        _event(entity_id="sensor.heat_pump_power", new_state=_state("2000"))
+    )
+
+    # 0.25 EUR/kWh (assumed); 2000 W = 2 kW; cost = 0.5 EUR/h
+    assert sensor._state == Decimal("0.5000")
+
+
+async def test_energy_sensor_no_price_unit_backward_compat(hass):
+    """Energy sensor works unchanged when price sensor has no unit_of_measurement."""
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.heat_pump_energy",
+        "sensor.electricity_price",
+        HOURLY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 10.0
+    sensor._cumulative_cost = 0.0
+
+    # No unit_of_measurement on price — most existing setups
+    hass.states.async_set("sensor.electricity_price", "0.30")
+    await sensor._async_update_energy_event(
+        _event(
+            entity_id="sensor.heat_pump_energy",
+            new_state=_state_with_unit("12", "kWh"),
+        )
+    )
+
+    # delta = 2 kWh; price = 0.30 (assumed EUR/kWh); cost = 0.60
+    assert sensor._cumulative_cost == pytest.approx(0.6)
+
+
+async def test_energy_sensor_price_change_no_unit_backward_compat(hass):
+    """Energy sensor price-change path works unchanged when price has no unit."""
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.heat_pump_energy",
+        "sensor.electricity_price",
+        HOURLY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 10.0
+    sensor._cumulative_cost = 0.0
+
+    hass.states.async_set("sensor.heat_pump_energy", "12")
+    await sensor._async_update_price_event(
+        _event(
+            entity_id="sensor.electricity_price",
+            old_state=_state("0.25"),
+            new_state=_state("0.30"),
+        )
+    )
+
+    # delta = 2 kWh; old price = 0.25 (no unit, assumed /kWh); cost = 0.50
+    assert sensor._cumulative_cost == pytest.approx(0.5)
+
+
+# ---------------------------------------------------------------------------
+# Combined: energy unit + price unit conversion together
+# ---------------------------------------------------------------------------
+
+
+async def test_energy_sensor_mwh_energy_with_eur_per_mwh_price(hass):
+    """Both energy (MWh) and price (EUR/MWh) conversions work together correctly."""
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.heat_pump_energy",
+        "sensor.electricity_price",
+        HOURLY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 1.0
+    sensor._cumulative_cost = 0.0
+    sensor._energy_to_kwh = 1000.0  # MWh → kWh
+
+    hass.states.async_set(
+        "sensor.electricity_price",
+        "50",
+        {"unit_of_measurement": "EUR/MWh"},
+    )
+    await sensor._async_update_energy_event(
+        _event(
+            entity_id="sensor.heat_pump_energy",
+            new_state=_state_with_unit("1.5", "MWh"),
+        )
+    )
+
+    # delta = 0.5 MWh = 500 kWh; price = 50 EUR/MWh = 0.05 EUR/kWh
+    # cost = 500 * 0.05 = 25.0 EUR
+    assert sensor._cumulative_cost == pytest.approx(25.0)
+    assert sensor._cumulative_energy == pytest.approx(500.0)
+
+
+async def test_energy_sensor_wh_energy_with_eur_per_wh_price(hass):
+    """Both energy (Wh) and price (EUR/Wh) conversions work together correctly."""
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.heat_pump_energy",
+        "sensor.electricity_price",
+        HOURLY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 1000.0
+    sensor._cumulative_cost = 0.0
+    sensor._energy_to_kwh = 0.001  # Wh → kWh
+
+    hass.states.async_set(
+        "sensor.electricity_price",
+        "0.0003",
+        {"unit_of_measurement": "EUR/Wh"},
+    )
+    await sensor._async_update_energy_event(
+        _event(
+            entity_id="sensor.heat_pump_energy",
+            new_state=_state_with_unit("2000", "Wh"),
+        )
+    )
+
+    # delta = 1000 Wh = 1 kWh; price = 0.0003 EUR/Wh = 0.3 EUR/kWh
+    # cost = 1 * 0.3 = 0.3 EUR
+    assert sensor._cumulative_cost == pytest.approx(0.3)
+    assert sensor._cumulative_energy == pytest.approx(1.0)
