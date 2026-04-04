@@ -1123,3 +1123,127 @@ async def test_energy_sensor_wh_energy_with_eur_per_wh_price(hass):
     # cost = 1 * 0.3 = 0.3 EUR
     assert sensor._cumulative_cost == pytest.approx(0.3)
     assert sensor._cumulative_energy == pytest.approx(1.0)
+
+
+# --- async_reset baseline preservation tests (#215 fix) ---
+
+
+async def test_energy_sensor_cumulative_first_delta_counted_after_reset(hass):
+    """Cumulative sensor: first energy increase after cost reset produces cost (#215).
+
+    The energy sensor never resets (total_increasing). The cost sensor resets daily.
+    After reset the first energy delta must be counted, not swallowed as baseline.
+    """
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.grid_import",
+        "sensor.electricity_price",
+        DAILY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 1000.0
+    sensor._cumulative_cost = 5.0
+    sensor._cumulative_energy = 10.0
+    sensor._state = 5.0
+
+    hass.states.async_set("sensor.electricity_price", "0.20")
+    # Energy sensor is at 1000 at the moment of cost reset
+    hass.states.async_set("sensor.grid_import", "1000")
+
+    sensor.schedule_next_reset = Mock()
+    sensor.async_reset()
+
+    # Baseline is read from hass.states, not wiped to None
+    assert sensor._last_energy_reading == pytest.approx(1000.0)
+    assert sensor.state == 0
+
+    # First energy update — delta is counted immediately (not swallowed as baseline)
+    await sensor._async_update_energy_event(
+        _event(entity_id="sensor.grid_import", new_state=_state("1002"))
+    )
+    # 2 kWh * €0.20 = €0.40
+    assert sensor._cumulative_cost == pytest.approx(0.40)
+    assert sensor.state == pytest.approx(0.40)
+    assert sensor._last_energy_reading == pytest.approx(1002.0)
+
+
+async def test_energy_sensor_daily_reset_baseline_set_when_at_zero(hass):
+    """Daily-resetting sensor already at 0 at cost reset time: baseline starts at 0.
+
+    Both the cost sensor and the source energy sensor reset at midnight.
+    When the cost reset fires the energy sensor is already at 0; subsequent
+    readings should accumulate cost from zero.
+    """
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.solar_today",
+        "sensor.electricity_price",
+        DAILY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 15.3
+    sensor._cumulative_cost = 3.0
+    sensor._cumulative_energy = 15.3
+    sensor._state = 3.0
+
+    hass.states.async_set("sensor.electricity_price", "0.20")
+    # Source sensor has already reset to 0 by the time the cost sensor resets
+    hass.states.async_set("sensor.solar_today", "0")
+
+    sensor.schedule_next_reset = Mock()
+    sensor.async_reset()
+
+    assert sensor._last_energy_reading == pytest.approx(0.0)
+    assert sensor.state == 0
+
+    # First reading of the new day — cost is counted from the 0 baseline
+    await sensor._async_update_energy_event(
+        _event(entity_id="sensor.solar_today", new_state=_state("0.5"))
+    )
+    # 0.5 kWh * €0.20 = €0.10
+    assert sensor._cumulative_cost == pytest.approx(0.10)
+    assert sensor._last_energy_reading == pytest.approx(0.5)
+
+
+async def test_energy_sensor_reset_baseline_unavailable_sensor(hass):
+    """If the energy sensor is unavailable at reset time, fall back to None baseline.
+
+    The next energy event will initialise the baseline (same as before the fix).
+    """
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.grid_import",
+        "sensor.electricity_price",
+        DAILY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 500.0
+    sensor._cumulative_cost = 10.0
+    sensor._cumulative_energy = 20.0
+    sensor._state = 10.0
+
+    hass.states.async_set("sensor.electricity_price", "0.15")
+    # "sensor.grid_import" is intentionally NOT in hass.states (unavailable)
+
+    sensor.schedule_next_reset = Mock()
+    sensor.async_reset()
+
+    # Falls back to None — base class behaviour when sensor unavailable
+    assert sensor._last_energy_reading is None
+    assert sensor.state == 0
+
+    # First event sets baseline (no cost)
+    await sensor._async_update_energy_event(
+        _event(entity_id="sensor.grid_import", new_state=_state("800"))
+    )
+    assert sensor._last_energy_reading == pytest.approx(800.0)
+    assert sensor.state == 0  # baseline only
+
+    # Second event produces cost
+    await sensor._async_update_energy_event(
+        _event(entity_id="sensor.grid_import", new_state=_state("802"))
+    )
+    assert sensor._cumulative_cost == pytest.approx(0.30)  # 2 kWh * €0.15

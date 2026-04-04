@@ -578,6 +578,31 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         except Exception as e:
             _LOGGER.error("Failed to update energy costs due to an error: %s", str(e))
 
+    @callback
+    def async_reset(self, *args):
+        """Reset cost totals, preserving energy baseline from the current sensor state.
+
+        Reading the current energy value before the base class clears
+        _last_energy_reading ensures that cumulative sensors (which never reset)
+        keep a correct baseline so the next delta is counted rather than swallowed.
+        For daily-resetting sensors that are already at 0 when the cost resets, the
+        baseline is set to 0 here; if they reset slightly after the cost reset the
+        existing current_energy == 0 guard in _async_update_energy_event handles it.
+        """
+        # Snapshot the current reading before the base class wipes _last_energy_reading.
+        current_energy: float | None = None
+        if self.hass:
+            current_state = self.hass.states.get(self._energy_sensor_id)
+            current_energy = _state_to_float(current_state)
+
+        super().async_reset(*args)
+
+        # Restore the baseline so cumulative sensors produce a correct first delta.
+        # If the sensor was unavailable, leave _last_energy_reading as None
+        # (base class fallback: first event after reset will initialise the baseline).
+        if current_energy is not None:
+            self._last_energy_reading = current_energy
+
 
 # -----------------------------------------------------------------------------------------------
 class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
