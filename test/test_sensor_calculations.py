@@ -1207,6 +1207,182 @@ async def test_energy_sensor_daily_reset_baseline_set_when_at_zero(hass):
     assert sensor._last_energy_reading == pytest.approx(0.5)
 
 
+async def test_source_reset_detected_via_total_increasing_decrement(hass):
+    """ESPHome / Modbus case: source skips the explicit 0 reading at midnight (#227).
+
+    A ``total_increasing`` source sensor goes from a large value directly to a
+    small positive value (the 0 sample is missed by polling). Per HA convention
+    any decrement on ``total_increasing`` is a reset, so the cost sensor must
+    re-baseline rather than computing a huge negative delta.
+    """
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.daily_energy",
+        "sensor.electricity_price",
+        DAILY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 2100.0  # pre-reset baseline (Wh)
+    sensor._cumulative_cost = 0.0  # cost sensor already reset to 0
+    sensor._cumulative_energy = 0.0
+    sensor._state = 0.0
+    sensor._energy_to_kwh = 0.001  # Wh → kWh
+
+    hass.states.async_set("sensor.electricity_price", "0.10")
+
+    new_state = Mock(
+        state="5",
+        attributes={
+            "unit_of_measurement": "Wh",
+            "state_class": "total_increasing",
+        },
+    )
+    old_state = Mock(
+        state="2100",
+        attributes={
+            "unit_of_measurement": "Wh",
+            "state_class": "total_increasing",
+        },
+    )
+
+    await sensor._async_update_energy_event(
+        _event(
+            entity_id="sensor.daily_energy",
+            new_state=new_state,
+            old_state=old_state,
+        )
+    )
+
+    # Reset detected via total_increasing decrement — no negative cost spike
+    assert sensor._last_energy_reading == 5.0
+    assert sensor._cumulative_cost == 0.0
+    assert sensor.state == 0.0
+
+
+async def test_source_reset_detected_via_last_reset_attribute(hass):
+    """utility_meter case: source signals reset via ``last_reset`` attribute change.
+
+    Sensors with ``state_class=total`` (e.g. HA ``utility_meter`` helper) update
+    ``last_reset`` on each reset cycle. A change in this attribute is the
+    canonical reset signal even if the value is not exactly zero.
+    """
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.daily_energy",
+        "sensor.electricity_price",
+        DAILY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 50.0
+    sensor._cumulative_cost = 0.0
+    sensor._cumulative_energy = 0.0
+    sensor._state = 0.0
+
+    hass.states.async_set("sensor.electricity_price", "0.20")
+
+    old_state = Mock(
+        state="50",
+        attributes={
+            "state_class": "total",
+            "last_reset": "2026-04-28T00:00:00+00:00",
+        },
+    )
+    new_state = Mock(
+        state="0.3",
+        attributes={
+            "state_class": "total",
+            "last_reset": "2026-04-29T00:00:00+00:00",
+        },
+    )
+
+    await sensor._async_update_energy_event(
+        _event(
+            entity_id="sensor.daily_energy",
+            new_state=new_state,
+            old_state=old_state,
+        )
+    )
+
+    assert sensor._last_energy_reading == 0.3
+    assert sensor._cumulative_cost == 0.0
+    assert sensor.state == 0.0
+
+
+async def test_source_reset_via_total_increasing_during_price_event(hass):
+    """Price event handler also detects source reset via total_increasing decrement.
+
+    Race condition: source sensor was already updated in the HA state machine
+    before our energy-event handler ran, then a price change fires first.
+    Without detection the price handler would compute a large negative delta.
+    """
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.daily_energy",
+        "sensor.electricity_price",
+        DAILY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 2100.0
+    sensor._cumulative_cost = 0.0
+    sensor._cumulative_energy = 0.0
+    sensor._state = 0.0
+    sensor._energy_to_kwh = 0.001
+
+    hass.states.async_set(
+        "sensor.daily_energy",
+        "5",
+        {"unit_of_measurement": "Wh", "state_class": "total_increasing"},
+    )
+
+    await sensor._async_update_price_event(
+        _event(
+            entity_id="sensor.electricity_price",
+            old_state=_state("0.10"),
+            new_state=_state("0.08"),
+        )
+    )
+
+    # Price handler detected source reset — no negative spike
+    assert sensor._last_energy_reading == 5.0
+    assert sensor._cumulative_cost == 0.0
+    assert sensor.state == 0.0
+
+
+async def test_total_increasing_normal_increment_not_treated_as_reset(hass):
+    """A normal increase on a total_increasing sensor is processed as cost, not reset."""
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.daily_energy",
+        "sensor.electricity_price",
+        HOURLY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 10.0
+    sensor._cumulative_cost = 0.0
+
+    hass.states.async_set("sensor.electricity_price", "0.20")
+
+    new_state = Mock(
+        state="12",
+        attributes={
+            "unit_of_measurement": "kWh",
+            "state_class": "total_increasing",
+        },
+    )
+
+    await sensor._async_update_energy_event(
+        _event(entity_id="sensor.daily_energy", new_state=new_state)
+    )
+
+    # 2 kWh x €0.20 = €0.40
+    assert sensor._cumulative_cost == pytest.approx(0.40)
+    assert sensor._last_energy_reading == 12.0
+
+
 async def test_energy_sensor_reset_baseline_unavailable_sensor(hass):
     """If the energy sensor is unavailable at reset time, fall back to None baseline.
 
