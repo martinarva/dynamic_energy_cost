@@ -2,6 +2,7 @@
 
 from decimal import Decimal, InvalidOperation
 import logging
+import math
 import voluptuous as vol
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
@@ -15,7 +16,6 @@ from homeassistant.helpers import (
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.restore_state import RestoreEntity
-from homeassistant.helpers.template import is_number
 from homeassistant.util.dt import now
 
 try:
@@ -90,9 +90,23 @@ def interval_display_name(interval: str) -> str:
     return interval.replace("_", " ").title()
 
 
+def _is_finite_number(value) -> bool:
+    """Return True when value coerces to a finite float.
+
+    Local replacement for ``homeassistant.helpers.template.is_number``,
+    which was relocated into a Jinja2 extension in HA 2026.5 (PR #167280)
+    and is no longer importable.  Mirrors the original behaviour
+    (rejects ``inf``/``nan`` and unparseable values).
+    """
+    try:
+        return math.isfinite(float(value))
+    except (TypeError, ValueError):
+        return False
+
+
 def validate_is_number(value):
     """Validate value is a number."""
-    if is_number(value):
+    if _is_finite_number(value):
         return value
     raise vol.Invalid("Value is not a number")
 

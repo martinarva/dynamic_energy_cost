@@ -18,7 +18,9 @@ from custom_components.dynamic_energy_cost.sensor import (
     EnergyCostSensor,
     PowerCostSensor,
     RealTimeCostSensor,
+    _is_finite_number,
     _price_unit_conversion_factor,
+    validate_is_number,
 )
 
 
@@ -1423,3 +1425,72 @@ async def test_energy_sensor_reset_baseline_unavailable_sensor(hass):
         _event(entity_id="sensor.grid_import", new_state=_state("802"))
     )
     assert sensor._cumulative_cost == pytest.approx(0.30)  # 2 kWh * €0.15
+
+
+# ---------------------------------------------------------------------------
+# is_number replacement (HA 2026.5 compatibility)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (0, True),
+        (1, True),
+        (-1.5, True),
+        ("0", True),
+        ("3.14", True),
+        ("-2", True),
+        ("1e3", True),
+        (None, False),
+        ("", False),
+        ("abc", False),
+        ("nan", False),
+        ("inf", False),
+        (float("nan"), False),
+        (float("inf"), False),
+        (float("-inf"), False),
+        ([], False),
+        ({}, False),
+    ],
+)
+def test_is_finite_number(value, expected):
+    """Local is_number replacement accepts only finite numeric values."""
+    assert _is_finite_number(value) is expected
+
+
+def test_validate_is_number_returns_value_for_numbers():
+    """validate_is_number returns the value unchanged for finite numerics."""
+    assert validate_is_number("4.5") == "4.5"
+    assert validate_is_number(7) == 7
+
+
+def test_validate_is_number_raises_for_non_numbers():
+    """validate_is_number raises vol.Invalid for non-numeric values."""
+    import voluptuous as vol
+
+    with pytest.raises(vol.Invalid):
+        validate_is_number("abc")
+    with pytest.raises(vol.Invalid):
+        validate_is_number(float("nan"))
+    with pytest.raises(vol.Invalid):
+        validate_is_number(None)
+
+
+def test_sensor_module_does_not_import_is_number_from_helpers_template():
+    """Regression test for #228 — HA 2026.5 removed is_number from helpers.template.
+
+    Importing the sensor module must not depend on
+    ``homeassistant.helpers.template.is_number`` (relocated to a Jinja2
+    extension in PR #167280).  Verify by inspecting the module source.
+    """
+    from pathlib import Path
+
+    sensor_path = (
+        Path(__file__).resolve().parents[1]
+        / "custom_components"
+        / "dynamic_energy_cost"
+        / "sensor.py"
+    )
+    source = sensor_path.read_text()
+    assert "from homeassistant.helpers.template import is_number" not in source
