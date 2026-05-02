@@ -129,6 +129,25 @@ def _energy_unit_conversion_factor(state) -> float:
     return _ENERGY_UNIT_TO_KWH.get(unit, 1.0)
 
 
+_POWER_UNIT_TO_KW: dict[str, float] = {
+    "W": 0.001,
+    "kW": 1.0,
+    "MW": 1000.0,
+}
+
+
+def _power_unit_conversion_factor(state) -> float:
+    """Return the factor to convert the power sensor's unit to kW.
+
+    Defaults to 0.001 (W → kW) when the unit is missing or unrecognised,
+    matching the historical behaviour where W was assumed.
+    """
+    if state is None:
+        return 0.001
+    unit = state.attributes.get("unit_of_measurement", "W")
+    return _POWER_UNIT_TO_KW.get(unit, 0.001)
+
+
 _PRICE_UNIT_TO_PER_KWH: dict[str, float] = {
     "wh": 1000.0,
     "kwh": 1.0,
@@ -379,11 +398,14 @@ class RealTimeCostSensor(SensorEntity):
             return
 
         price_to_kwh = _price_unit_conversion_factor(price_state)
+        power_state = self.hass.states.get(self._power_sensor_id)
+        power_to_kw = _power_unit_conversion_factor(power_state)
         try:
             calculated_cost = (
                 Decimal(str(electricity_price))
                 * Decimal(str(price_to_kwh))
-                * (Decimal(str(power_usage)) / Decimal("1000"))
+                * Decimal(str(power_usage))
+                * Decimal(str(power_to_kw))
             ).quantize(REALTIME_COST_PRECISION)
             if calculated_cost != self._state:
                 self._state = calculated_cost

@@ -19,6 +19,7 @@ from custom_components.dynamic_energy_cost.sensor import (
     PowerCostSensor,
     RealTimeCostSensor,
     _is_finite_number,
+    _power_unit_conversion_factor,
     _price_unit_conversion_factor,
     validate_is_number,
 )
@@ -887,6 +888,171 @@ def test_realtime_sensor_eur_per_kwh_unchanged(hass):
     )
 
     # 0.25 EUR/kWh; 2000 W = 2 kW; cost = 0.5 EUR/h
+    assert sensor._state == Decimal("0.5000")
+
+
+# ---------------------------------------------------------------------------
+# Power unit conversion (#229)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "unit, expected",
+    [
+        ("W", 0.001),
+        ("kW", 1.0),
+        ("MW", 1000.0),
+        ("", 0.001),
+        ("mW", 0.001),  # unrecognised → backward-compat default (W)
+        ("foo", 0.001),
+    ],
+)
+def test_power_unit_conversion_factor(unit, expected):
+    """Power unit helper extracts the correct W → kW factor."""
+    state = _state_with_unit("100", unit) if unit else _state("100")
+    assert _power_unit_conversion_factor(state) == pytest.approx(expected)
+
+
+def test_power_unit_conversion_factor_none():
+    """Power unit helper returns 0.001 (W → kW) for None state, matching legacy default."""
+    assert _power_unit_conversion_factor(None) == pytest.approx(0.001)
+
+
+def test_realtime_sensor_kw_power_sensor(hass):
+    """Power sensor reporting in kW is treated as kW, not W (#229)."""
+    sensor = RealTimeCostSensor(
+        hass,
+        _entry(),
+        "sensor.electricity_price",
+        "sensor.heat_pump_power",
+    )
+    sensor.async_write_ha_state = Mock()
+
+    hass.states.async_set(
+        "sensor.electricity_price",
+        "0.30",
+        {"unit_of_measurement": "EUR/kWh"},
+    )
+    hass.states.async_set(
+        "sensor.heat_pump_power",
+        "5",
+        {"unit_of_measurement": "kW"},
+    )
+
+    sensor.handle_state_change(
+        _event(entity_id="sensor.heat_pump_power", new_state=_state("5"))
+    )
+
+    # 5 kW x 0.30 EUR/kWh = 1.50 EUR/h (not 0.0015 if treated as W)
+    assert sensor._state == Decimal("1.5000")
+
+
+def test_realtime_sensor_w_power_sensor_explicit_unit(hass):
+    """Power sensor reporting in W with explicit unit produces same result as legacy."""
+    sensor = RealTimeCostSensor(
+        hass,
+        _entry(),
+        "sensor.electricity_price",
+        "sensor.heat_pump_power",
+    )
+    sensor.async_write_ha_state = Mock()
+
+    hass.states.async_set(
+        "sensor.electricity_price",
+        "0.30",
+        {"unit_of_measurement": "EUR/kWh"},
+    )
+    hass.states.async_set(
+        "sensor.heat_pump_power",
+        "2000",
+        {"unit_of_measurement": "W"},
+    )
+
+    sensor.handle_state_change(
+        _event(entity_id="sensor.heat_pump_power", new_state=_state("2000"))
+    )
+
+    # 2000 W = 2 kW x 0.30 EUR/kWh = 0.60 EUR/h
+    assert sensor._state == Decimal("0.6000")
+
+
+def test_realtime_sensor_mw_power_sensor(hass):
+    """Power sensor reporting in MW is multiplied to kW correctly."""
+    sensor = RealTimeCostSensor(
+        hass,
+        _entry(),
+        "sensor.electricity_price",
+        "sensor.heat_pump_power",
+    )
+    sensor.async_write_ha_state = Mock()
+
+    hass.states.async_set(
+        "sensor.electricity_price",
+        "0.10",
+        {"unit_of_measurement": "EUR/kWh"},
+    )
+    hass.states.async_set(
+        "sensor.heat_pump_power",
+        "0.5",
+        {"unit_of_measurement": "MW"},
+    )
+
+    sensor.handle_state_change(
+        _event(entity_id="sensor.heat_pump_power", new_state=_state("0.5"))
+    )
+
+    # 0.5 MW = 500 kW x 0.10 EUR/kWh = 50 EUR/h
+    assert sensor._state == Decimal("50.0000")
+
+
+def test_realtime_sensor_kw_power_with_eur_per_mwh_price(hass):
+    """Combined: kW power sensor with EUR/MWh price (e.g. Nordpool defaults)."""
+    sensor = RealTimeCostSensor(
+        hass,
+        _entry(),
+        "sensor.electricity_price",
+        "sensor.heat_pump_power",
+    )
+    sensor.async_write_ha_state = Mock()
+
+    hass.states.async_set(
+        "sensor.electricity_price",
+        "100",
+        {"unit_of_measurement": "EUR/MWh"},
+    )
+    hass.states.async_set(
+        "sensor.heat_pump_power",
+        "3",
+        {"unit_of_measurement": "kW"},
+    )
+
+    sensor.handle_state_change(
+        _event(entity_id="sensor.heat_pump_power", new_state=_state("3"))
+    )
+
+    # 100 EUR/MWh = 0.10 EUR/kWh; 3 kW x 0.10 = 0.30 EUR/h
+    assert sensor._state == Decimal("0.3000")
+
+
+def test_realtime_sensor_no_power_unit_backward_compat(hass):
+    """Power sensor without unit_of_measurement is treated as W (legacy default)."""
+    sensor = RealTimeCostSensor(
+        hass,
+        _entry(),
+        "sensor.electricity_price",
+        "sensor.heat_pump_power",
+    )
+    sensor.async_write_ha_state = Mock()
+
+    # No unit_of_measurement on power sensor — most existing setups
+    hass.states.async_set("sensor.electricity_price", "0.25")
+    hass.states.async_set("sensor.heat_pump_power", "2000")
+
+    sensor.handle_state_change(
+        _event(entity_id="sensor.heat_pump_power", new_state=_state("2000"))
+    )
+
+    # 0.25 EUR/kWh; 2000 W = 2 kW; cost = 0.5 EUR/h (unchanged from pre-fix)
     assert sensor._state == Decimal("0.5000")
 
 

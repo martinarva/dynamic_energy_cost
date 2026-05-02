@@ -32,7 +32,7 @@ Track your real electricity costs in Home Assistant. Point this integration at a
 - **Real-time cost** (power path) — see what you're paying right now, in currency per hour
 - **Interval cost sensors** — 15-minute, hourly, daily, weekly, monthly, and yearly accumulated costs
 - **Manual reset sensor** — never resets automatically; perfect for tracking a single EV charging session or appliance run
-- **Automatic unit conversion** — price in EUR/MWh or EUR/Wh? Energy in Wh or MWh? The integration detects and converts automatically
+- **Automatic unit conversion** — price in EUR/MWh or EUR/Wh? Energy in Wh or MWh? Power in kW or MW? The integration detects and converts automatically
 - **Customizable sensor selection** — choose which cost sensors to create during setup; change it later via the options flow
 - **Source device integration** — cost sensors appear directly under your source device (heat pump, EV charger, etc.)
 
@@ -42,7 +42,7 @@ Track your real electricity costs in Home Assistant. Point this integration at a
 |---|---|---|
 | Electricity price | Yes | `currency/kWh`, `currency/MWh`, `currency/Wh` (any currency) |
 | Energy consumption | Recommended | `kWh`, `Wh`, `MWh` |
-| Power consumption | Alternative | `W` |
+| Power consumption | Alternative | `W`, `kW`, `MW` |
 
 Use an **energy sensor** whenever one is available — it is more accurate and works like the HA Energy Dashboard. A **power sensor** is supported as a fallback but remains an approximation since it integrates instantaneous readings over time.
 
@@ -95,7 +95,7 @@ When setting up the integration, you will go through two steps:
 
 **Step 1 — Source sensors:**
 - **Electricity Price Sensor:** Sensor that provides the current electricity price (for example Nordpool, Amber, ... fixed price, day/night).
-- **Power/Energy Usage Sensor:** Power sensors must measure in Watts (W). Energy sensors can use kWh, Wh, or MWh (converted automatically). Prefer the energy sensor option when both are available.
+- **Power/Energy Usage Sensor:** Power sensors can measure in W, kW, or MW (converted automatically). Energy sensors can use kWh, Wh, or MWh (converted automatically). Prefer the energy sensor option when both are available.
 
 **Step 2 — Sensor selection:**
 - Choose which cost sensors to create. All sensors are selected by default.
