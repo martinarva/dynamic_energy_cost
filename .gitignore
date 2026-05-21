@@ -1,0 +1,6 @@
+.claude/
+__pycache__/
+*.pyc
+.DS_Store
+uv.lock
+forum_reply.md
