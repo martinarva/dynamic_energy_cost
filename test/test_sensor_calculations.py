@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from decimal import Decimal
 from datetime import datetime
-from unittest.mock import AsyncMock, Mock
+from contextlib import contextmanager
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -50,6 +51,24 @@ def _entry() -> MockConfigEntry:
             "energy_sensor": "sensor.heat_pump_energy",
         },
     )
+
+
+@contextmanager
+def _frozen_clock():
+    """Freeze the clock the PowerCostSensor integrates against.
+
+    The sensor calls now() twice (once to measure elapsed time, once to store
+    _last_update). Left on the wall clock, the few microseconds between those
+    calls leak into the result and show up at the accumulator's precision, so
+    these tests would be flaky on slower machines. Freezing makes the mocked
+    elapsed interval exact.
+    """
+    frozen = dt_util.utcnow()
+    with (
+        patch("custom_components.dynamic_energy_cost.entity.now", return_value=frozen),
+        patch("custom_components.dynamic_energy_cost.sensor.now", return_value=frozen),
+    ):
+        yield frozen
 
 
 def test_realtime_sensor_ignores_missing_source_state(hass):
@@ -507,17 +526,16 @@ def test_power_sensor_integrates_cost_over_elapsed_time(hass):
     sensor._state = Decimal("1.0000")
 
     from datetime import timedelta
-    from homeassistant.util.dt import now
 
     sensor._last_cost_rate = Decimal("1.5")
-    sensor._last_update = now() - timedelta(hours=2)
-    sensor._handle_real_time_cost_update(
-        _event(entity_id=realtime_sensor.entity_id, new_state=_state("1.5"))
-    )
+    with _frozen_clock() as frozen:
+        sensor._last_update = frozen - timedelta(hours=2)
+        sensor._handle_real_time_cost_update(
+            _event(entity_id=realtime_sensor.entity_id, new_state=_state("1.5"))
+        )
 
-    # Wall-clock elapsed time drifts a few microseconds past the mocked 2 h, so
-    # compare with tolerance rather than an exact Decimal.
-    assert sensor.state == pytest.approx(Decimal("4.0"), abs=Decimal("0.000001"))
+    # 1.0 + 1.5 EUR/h x 2 h
+    assert sensor.state == Decimal("4.0")
     sensor.async_write_ha_state.assert_called_once()
 
 
@@ -534,18 +552,19 @@ def test_power_sensor_uses_previous_cost_rate_for_elapsed_time(hass):
     sensor._state = Decimal("1.0000")
 
     from datetime import timedelta
-    from homeassistant.util.dt import now
 
-    sensor._last_update = now() - timedelta(hours=2)
-    sensor._handle_real_time_cost_update(
-        _event(
-            entity_id=realtime_sensor.entity_id,
-            old_state=_state("0.5"),
-            new_state=_state("1.5"),
+    with _frozen_clock() as frozen:
+        sensor._last_update = frozen - timedelta(hours=2)
+        sensor._handle_real_time_cost_update(
+            _event(
+                entity_id=realtime_sensor.entity_id,
+                old_state=_state("0.5"),
+                new_state=_state("1.5"),
+            )
         )
-    )
 
-    assert sensor.state == Decimal("2.0000")
+    # Charged at the previous rate: 1.0 + 0.5 EUR/h x 2 h
+    assert sensor.state == Decimal("2.0")
     assert sensor._last_cost_rate == Decimal("1.5")
     sensor.async_write_ha_state.assert_called_once()
 
@@ -563,19 +582,20 @@ def test_power_sensor_uses_precise_rate_for_elapsed_time(hass):
     sensor._state = Decimal("0.0000")
 
     from datetime import timedelta
-    from homeassistant.util.dt import now
 
     sensor._last_cost_rate = Decimal("0.0165")
-    sensor._last_update = now() - timedelta(hours=2)
-    sensor._handle_real_time_cost_update(
-        _event(
-            entity_id=realtime_sensor.entity_id,
-            old_state=_state("0.0165"),
-            new_state=_state("0.0200"),
+    with _frozen_clock() as frozen:
+        sensor._last_update = frozen - timedelta(hours=2)
+        sensor._handle_real_time_cost_update(
+            _event(
+                entity_id=realtime_sensor.entity_id,
+                old_state=_state("0.0165"),
+                new_state=_state("0.0200"),
+            )
         )
-    )
 
-    assert sensor.state == Decimal("0.0330")
+    # 0.0165 EUR/h x 2 h — the precise rate is kept, not the 4-decimal display
+    assert sensor.state == Decimal("0.033")
 
 
 def test_power_sensor_does_not_backfill_idle_time_with_new_spike(hass):
