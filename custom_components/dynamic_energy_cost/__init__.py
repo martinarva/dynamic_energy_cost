@@ -170,6 +170,29 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+def _find_devices_by_identifier(
+    device_registry: dr.DeviceRegistry, identifier: tuple[str, str]
+) -> list[dr.DeviceEntry]:
+    """Return every registered device carrying ``identifier``.
+
+    HA 2026.8 added ``async_get_devices``; the older ``async_get_device`` is
+    deprecated from HA 2026.9 and stops working in HA 2027.8, so prefer the
+    new API and fall back only for older cores.
+
+    The identifier namespace is this integration's own DOMAIN, so no
+    config-entry filter is applied — that keeps the lookup faithful to the
+    previous global-search behaviour while still only ever matching devices
+    this integration created.
+    """
+    async_get_devices = getattr(device_registry, "async_get_devices", None)
+    if async_get_devices is not None:
+        return async_get_devices(identifiers={identifier})
+
+    # HA < 2026.8 fallback
+    device = device_registry.async_get_device(identifiers={identifier})
+    return [device] if device is not None else []
+
+
 def _cleanup_orphaned_energy_device(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Remove the orphaned device left by the v0.9.3 identifier change.
 
@@ -194,25 +217,22 @@ def _cleanup_orphaned_energy_device(hass: HomeAssistant, entry: ConfigEntry) -> 
     device_registry = dr.async_get(hass)
     entity_registry = er.async_get(hass)
     for energy_sensor in candidates:
-        old_device = device_registry.async_get_device(
-            identifiers={(DOMAIN, energy_sensor)}
-        )
-        if old_device is None:
-            continue
+        for old_device in _find_devices_by_identifier(
+            device_registry, (DOMAIN, energy_sensor)
+        ):
+            if er.async_entries_for_device(entity_registry, old_device.id):
+                _LOGGER.debug(
+                    "Skipping removal of device %s — it still has entities",
+                    old_device.id,
+                )
+                continue
 
-        if er.async_entries_for_device(entity_registry, old_device.id):
-            _LOGGER.debug(
-                "Skipping removal of device %s — it still has entities",
+            device_registry.async_remove_device(old_device.id)
+            _LOGGER.info(
+                "Removed orphaned device %s (old energy sensor identifier: %s)",
                 old_device.id,
+                energy_sensor,
             )
-            continue
-
-        device_registry.async_remove_device(old_device.id)
-        _LOGGER.info(
-            "Removed orphaned device %s (old energy sensor identifier: %s)",
-            old_device.id,
-            energy_sensor,
-        )
 
 
 def _cleanup_legacy_helper_device(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -224,26 +244,23 @@ def _cleanup_legacy_helper_device(hass: HomeAssistant, entry: ConfigEntry) -> No
     The old device becomes an empty orphan after the first restart.
     """
     device_registry = dr.async_get(hass)
-    old_device = device_registry.async_get_device(
-        identifiers={(DOMAIN, entry.entry_id)}
-    )
-    if old_device is None:
-        return
-
     entity_registry = er.async_get(hass)
-    if er.async_entries_for_device(entity_registry, old_device.id):
-        _LOGGER.debug(
-            "Skipping removal of legacy device %s — it still has entities",
-            old_device.id,
-        )
-        return
+    for old_device in _find_devices_by_identifier(
+        device_registry, (DOMAIN, entry.entry_id)
+    ):
+        if er.async_entries_for_device(entity_registry, old_device.id):
+            _LOGGER.debug(
+                "Skipping removal of legacy device %s — it still has entities",
+                old_device.id,
+            )
+            continue
 
-    device_registry.async_remove_device(old_device.id)
-    _LOGGER.info(
-        "Removed legacy helper device %s (entry_id: %s)",
-        old_device.id,
-        entry.entry_id,
-    )
+        device_registry.async_remove_device(old_device.id)
+        _LOGGER.info(
+            "Removed legacy helper device %s (entry_id: %s)",
+            old_device.id,
+            entry.entry_id,
+        )
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):

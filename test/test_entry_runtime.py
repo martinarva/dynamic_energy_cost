@@ -8,7 +8,11 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
-from custom_components.dynamic_energy_cost import async_reload_entry, async_setup_entry
+from custom_components.dynamic_energy_cost import (
+    _find_devices_by_identifier,
+    async_reload_entry,
+    async_setup_entry,
+)
 from custom_components.dynamic_energy_cost.const import DOMAIN
 from custom_components.dynamic_energy_cost.sensor import (
     EnergyCostSensor,
@@ -450,3 +454,76 @@ async def test_legacy_device_not_removed_if_entities_remain(hass):
 
     # Device should still exist because it has entities
     assert device_registry.async_get(old_device.id) is not None
+
+
+# ---------------------------------------------------------------------------
+# Device lookup API compatibility (#240)
+# ---------------------------------------------------------------------------
+
+
+def test_find_devices_prefers_async_get_devices():
+    """On HA 2026.8+ the non-deprecated async_get_devices API is used (#240).
+
+    device_registry.async_get_device is deprecated from HA 2026.9 and stops
+    working in HA 2027.8, so it must not be called when the new API exists.
+    """
+    device = Mock(id="dev-1")
+    registry = Mock(spec_set=["async_get_devices", "async_get_device"])
+    registry.async_get_devices.return_value = [device]
+
+    result = _find_devices_by_identifier(registry, (DOMAIN, "sensor.energy"))
+
+    assert result == [device]
+    registry.async_get_devices.assert_called_once_with(
+        identifiers={(DOMAIN, "sensor.energy")}
+    )
+    registry.async_get_device.assert_not_called()
+
+
+def test_find_devices_returns_all_matches():
+    """All devices sharing the identifier are returned, not just the first."""
+    devices = [Mock(id="dev-1"), Mock(id="dev-2")]
+    registry = Mock(spec_set=["async_get_devices"])
+    registry.async_get_devices.return_value = devices
+
+    assert _find_devices_by_identifier(registry, (DOMAIN, "x")) == devices
+
+
+def test_find_devices_falls_back_on_older_ha():
+    """HA < 2026.8 has no async_get_devices — fall back to async_get_device."""
+    device = Mock(id="dev-1")
+    registry = Mock(spec_set=["async_get_device"])
+    registry.async_get_device.return_value = device
+
+    result = _find_devices_by_identifier(registry, (DOMAIN, "sensor.energy"))
+
+    assert result == [device]
+    registry.async_get_device.assert_called_once_with(
+        identifiers={(DOMAIN, "sensor.energy")}
+    )
+
+
+def test_find_devices_fallback_returns_empty_list_when_missing():
+    """Fallback path returns an empty list (not [None]) when nothing matches."""
+    registry = Mock(spec_set=["async_get_device"])
+    registry.async_get_device.return_value = None
+
+    assert _find_devices_by_identifier(registry, (DOMAIN, "nope")) == []
+
+
+def test_no_deprecated_device_lookup_outside_compat_helper():
+    """Regression guard for #240: async_get_device stays confined to the shim.
+
+    Exactly one call site may remain — the documented HA < 2026.8 fallback
+    inside _find_devices_by_identifier.
+    """
+    from pathlib import Path
+
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "custom_components"
+        / "dynamic_energy_cost"
+        / "__init__.py"
+    ).read_text()
+
+    assert source.count("async_get_device(") == 1
