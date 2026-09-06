@@ -50,6 +50,10 @@ INTERVALS = [QUARTERLY, HOURLY, DAILY, WEEKLY, MONTHLY, YEARLY, MANUAL]
 
 _LOGGER = logging.getLogger(__name__)
 REALTIME_COST_PRECISION = Decimal("0.0001")
+# Accumulated interval cost keeps more decimals than the realtime rate so that
+# small loads, whose per-update increment is well below 0.0001, still add up
+# instead of rounding away to nothing (#237).
+ACCUMULATED_COST_PRECISION = Decimal("0.00000001")
 
 
 def _resolve_source_device(hass: HomeAssistant, source_entity_id: str):
@@ -803,7 +807,12 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
                 hours_passed,
             )  # Log time difference in hours
 
-            self._state += (previous_cost * hours_passed).quantize(Decimal("0.0001"))
+            # Quantize the accumulated total, never the increment: a small load
+            # produces increments below 0.0001 that would each round to zero and
+            # be lost entirely (#237).
+            self._state = (self._state + previous_cost * hours_passed).quantize(
+                ACCUMULATED_COST_PRECISION
+            )
             self._last_cost_rate = current_cost
             self._last_update = now()
             self.async_write_ha_state()

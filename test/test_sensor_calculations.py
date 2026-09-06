@@ -515,7 +515,9 @@ def test_power_sensor_integrates_cost_over_elapsed_time(hass):
         _event(entity_id=realtime_sensor.entity_id, new_state=_state("1.5"))
     )
 
-    assert sensor.state == Decimal("4.0000")
+    # Wall-clock elapsed time drifts a few microseconds past the mocked 2 h, so
+    # compare with tolerance rather than an exact Decimal.
+    assert sensor.state == pytest.approx(Decimal("4.0"), abs=Decimal("0.000001"))
     sensor.async_write_ha_state.assert_called_once()
 
 
@@ -1660,3 +1662,108 @@ def test_sensor_module_does_not_import_is_number_from_helpers_template():
     )
     source = sensor_path.read_text()
     assert "from homeassistant.helpers.template import is_number" not in source
+
+
+# ---------------------------------------------------------------------------
+# Small-load accumulation (#237)
+# ---------------------------------------------------------------------------
+
+
+def _power_cost_sensor(hass, interval=HOURLY):
+    realtime_sensor = Mock(entity_id="sensor.small_appliance_real_time_energy_cost")
+    realtime_sensor.name = "Small Appliance Real Time Energy Cost"
+    realtime_sensor.device_info = {"identifiers": {(DOMAIN, "entry-123")}}
+    realtime_sensor.unique_id = "entry-123_real_time_cost"
+    realtime_sensor._config_entry = _entry()
+
+    sensor = PowerCostSensor(hass, realtime_sensor, interval)
+    sensor.async_write_ha_state = Mock()
+    sensor._state = Decimal("0")
+    return sensor
+
+
+def test_power_sensor_accumulates_small_loads(hass):
+    """A sub-100 W load must still accrue cost (#237).
+
+    The per-update increment for a small load is far below 0.0001, so
+    quantizing the increment (rather than the running total) silently
+    discarded every single update and the sensor stayed at zero.
+    """
+    from datetime import timedelta
+    from homeassistant.util.dt import now
+
+    sensor = _power_cost_sensor(hass)
+
+    # 50 W at 0.10 EUR/kWh -> realtime rate 0.0050 EUR/h.
+    # One 30 s update contributes ~0.0000417 EUR, which used to round to zero.
+    rate = Decimal("0.0050")
+    sensor._last_cost_rate = rate
+    sensor._last_update = now() - timedelta(seconds=30)
+
+    sensor._handle_real_time_cost_update(
+        _event(
+            entity_id=sensor._real_time_cost_sensor.entity_id,
+            new_state=_state(str(rate)),
+        )
+    )
+
+    assert sensor.state > 0, "small load must accrue cost, not round away to zero"
+    assert sensor.state == pytest.approx(
+        Decimal("0.0000416667"), abs=Decimal("0.000001")
+    )
+
+
+def test_power_sensor_small_load_accumulates_over_many_updates(hass):
+    """Repeated small increments add up instead of each rounding to zero (#237)."""
+    from datetime import timedelta
+    from homeassistant.util.dt import now
+
+    sensor = _power_cost_sensor(hass)
+    rate = Decimal("0.0050")  # 50 W at 0.10 EUR/kWh
+    sensor._last_cost_rate = rate
+
+    updates = 120  # one hour's worth of 30 s updates
+    for _ in range(updates):
+        sensor._last_update = now() - timedelta(seconds=30)
+        sensor._handle_real_time_cost_update(
+            _event(
+                entity_id=sensor._real_time_cost_sensor.entity_id,
+                new_state=_state(str(rate)),
+            )
+        )
+
+    # 120 x 30 s = 1 h at 0.0050 EUR/h
+    assert sensor.state == pytest.approx(rate, abs=Decimal("0.0001"))
+
+
+def test_power_sensor_large_load_unchanged(hass):
+    """Loads that already worked keep producing the same totals (#237)."""
+    from datetime import timedelta
+    from homeassistant.util.dt import now
+
+    sensor = _power_cost_sensor(hass)
+    sensor._last_cost_rate = Decimal("0.1000")  # 1 kW at 0.10 EUR/kWh
+    sensor._last_update = now() - timedelta(hours=1)
+
+    sensor._handle_real_time_cost_update(
+        _event(
+            entity_id=sensor._real_time_cost_sensor.entity_id,
+            new_state=_state("0.1000"),
+        )
+    )
+
+    assert sensor.state == pytest.approx(Decimal("0.1"), abs=Decimal("0.000001"))
+
+
+def test_accumulated_precision_is_finer_than_realtime(hass):
+    """Guard the invariant behind the #237 fix.
+
+    The accumulated interval total must keep more decimals than the realtime
+    rate, otherwise small per-update increments round away again.
+    """
+    from custom_components.dynamic_energy_cost.sensor import (
+        ACCUMULATED_COST_PRECISION,
+        REALTIME_COST_PRECISION,
+    )
+
+    assert ACCUMULATED_COST_PRECISION < REALTIME_COST_PRECISION

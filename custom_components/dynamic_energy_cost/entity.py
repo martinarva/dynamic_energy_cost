@@ -159,6 +159,15 @@ class BaseUtilitySensor(SensorEntity):
         return SensorDeviceClass.MONETARY
 
     @property
+    def suggested_display_precision(self):
+        """Return how many decimals the frontend should show.
+
+        Cost is accumulated with more decimals than this so that small loads
+        are not lost to rounding; the extra precision is internal only.
+        """
+        return 4
+
+    @property
     def name(self):
         """Return the name of the sensor."""
         return self._name
