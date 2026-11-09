@@ -18,6 +18,8 @@ _LOGGER = logging.getLogger(__name__)
 class BaseUtilitySensor(SensorEntity):
     """Base sensor for handling energy cost data."""
 
+    _attr_should_poll = False
+
     def __init__(self, hass: HomeAssistant, interval: str) -> None:
         """Initialize the sensor."""
         super().__init__()
@@ -135,7 +137,13 @@ class BaseUtilitySensor(SensorEntity):
         """Calibrate the state with a given value."""
         _LOGGER.debug("Calibrate %s = %s type(%s)", self._name, value, type(value))
         self._cumulative_cost = float(str(value))
-        self._state = self._cumulative_cost
+        # Keep the state type: PowerCostSensor adds Decimals to it, and
+        # float + Decimal raises TypeError.
+        self._state = (
+            Decimal(str(value))
+            if isinstance(self._state, Decimal)
+            else self._cumulative_cost
+        )
         self._last_update = now()
         self.async_write_ha_state()
 
