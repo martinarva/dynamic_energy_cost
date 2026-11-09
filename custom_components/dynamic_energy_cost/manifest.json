@@ -3,12 +3,10 @@
   "name": "Dynamic Energy Cost",
   "codeowners": ["@martinarva"],
   "config_flow": true,
-  "dependencies": ["sensor","input_number","number","utility_meter"],
+  "dependencies": ["sensor","input_number","number"],
   "documentation": "https://github.com/martinarva/dynamic_energy_cost/",
-  "iot_class": "local_polling",
+  "iot_class": "calculated",
   "issue_tracker": "https://github.com/martinarva/dynamic_energy_cost/issues/",
-  "requirements": [
-    "numpy>=2.2.0"
-  ],
+  "requirements": [],
   "version": "1.2.4"
 }

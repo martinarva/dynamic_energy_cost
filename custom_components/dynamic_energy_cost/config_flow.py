@@ -188,7 +188,6 @@ class DynamicEnergyCostConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Dynamic Energy Cost."""
 
     VERSION = 3
-    CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
 
     def __init__(self) -> None:
         """Initialize config flow."""
