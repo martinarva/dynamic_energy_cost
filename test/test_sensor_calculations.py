@@ -1787,3 +1787,61 @@ def test_accumulated_precision_is_finer_than_realtime(hass):
     )
 
     assert ACCUMULATED_COST_PRECISION < REALTIME_COST_PRECISION
+
+
+# ---------------------------------------------------------------------------
+# calibrate / reset on PowerCostSensor
+# ---------------------------------------------------------------------------
+
+
+def test_power_sensor_keeps_accumulating_after_calibrate(hass):
+    """Calibrating must keep the state a Decimal so integration continues."""
+    from datetime import timedelta
+    from homeassistant.util.dt import now
+
+    sensor = _power_cost_sensor(hass)
+    sensor.async_calibrate(5.5)
+    assert isinstance(sensor._state, Decimal)
+
+    sensor._last_cost_rate = Decimal("0.1000")
+    sensor._last_update = now() - timedelta(hours=1)
+    sensor._handle_real_time_cost_update(
+        _event(
+            entity_id=sensor._real_time_cost_sensor.entity_id,
+            new_state=_state("0.1000"),
+        )
+    )
+
+    assert sensor.state == pytest.approx(Decimal("5.6"), abs=Decimal("0.000001"))
+
+
+def test_power_sensor_reset_books_pending_cost_and_keeps_rate(hass):
+    """The cost accrued since the last update is published before the reset."""
+    from datetime import timedelta
+    from homeassistant.util.dt import now
+
+    sensor = _power_cost_sensor(hass)
+    sensor._last_cost_rate = Decimal("0.6000")  # 6 kW at 0.10 EUR/kWh
+    sensor._last_update = now() - timedelta(minutes=10)
+
+    written = []
+    sensor.async_write_ha_state = Mock(
+        side_effect=lambda: written.append(sensor._state)
+    )
+
+    sensor.async_reset()
+
+    # Closing value of the ended period includes the 10 minutes: 0.6 * 1/6
+    assert written[0] == pytest.approx(Decimal("0.1"), abs=Decimal("0.000001"))
+    assert sensor.state == 0
+    assert sensor._last_cost_rate == Decimal("0.6000")
+
+    # Integration resumes after the reset using the kept rate.
+    sensor._last_update = now() - timedelta(minutes=30)
+    sensor._handle_real_time_cost_update(
+        _event(
+            entity_id=sensor._real_time_cost_sensor.entity_id,
+            new_state=_state("0.6000"),
+        )
+    )
+    assert sensor.state == pytest.approx(Decimal("0.3"), abs=Decimal("0.000001"))
