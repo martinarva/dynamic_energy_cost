@@ -409,38 +409,59 @@ class RealTimeCostSensor(SensorEntity):
             )
             return
 
-        price_state = self.hass.states.get(self._electricity_price_sensor_id)
-        electricity_price = _state_to_float(price_state)
-        power_usage = _state_to_float(self.hass.states.get(self._power_sensor_id))
+        try:
+            calculated_cost = self._calculate_cost_rate()
+        except ValueError as e:
+            _LOGGER.error("Error converting sensor data to float: %s", e)
+            return
 
-        if electricity_price is None or power_usage is None:
+        if calculated_cost is None:
             _LOGGER.warning(
                 "One or more sensor values are unavailable, skipping update"
             )
             return
 
-        price_to_kwh = _price_unit_conversion_factor(price_state)
+        if calculated_cost != self._state:
+            self._state = calculated_cost
+            self.async_write_ha_state()
+            _LOGGER.debug("Updated Real Time Energy Cost: %s EUR/h", calculated_cost)
+
+    def _calculate_cost_rate(self) -> Decimal | None:
+        """Return the cost per hour from the current price and power states.
+
+        Returns None while either of them has no usable number.
+        """
+        price_state = self.hass.states.get(self._electricity_price_sensor_id)
         power_state = self.hass.states.get(self._power_sensor_id)
-        power_to_kw = _power_unit_conversion_factor(power_state)
-        try:
-            calculated_cost = (
-                Decimal(str(electricity_price))
-                * Decimal(str(price_to_kwh))
-                * Decimal(str(power_usage))
-                * Decimal(str(power_to_kw))
-            ).quantize(REALTIME_COST_PRECISION)
-            if calculated_cost != self._state:
-                self._state = calculated_cost
-                self.async_write_ha_state()
-                _LOGGER.debug(
-                    "Updated Real Time Energy Cost: %s EUR/h", calculated_cost
-                )
-        except ValueError as e:
-            _LOGGER.error("Error converting sensor data to float: %s", e)
+        electricity_price = _state_to_float(price_state)
+        power_usage = _state_to_float(power_state)
+
+        if electricity_price is None or power_usage is None:
+            return None
+        if not (math.isfinite(electricity_price) and math.isfinite(power_usage)):
+            return None
+
+        return (
+            Decimal(str(electricity_price))
+            * Decimal(str(_price_unit_conversion_factor(price_state)))
+            * Decimal(str(power_usage))
+            * Decimal(str(_power_unit_conversion_factor(power_state)))
+        ).quantize(REALTIME_COST_PRECISION)
 
     async def async_added_to_hass(self):
         """Register callbacks when added to hass."""
         self._unit_of_measurement = f"{get_currency(self.hass)}/h"
+        # Start from the current price and power when they are known. The
+        # rate otherwise stays 0 until one of them changes, and the interval
+        # sensors charge nothing meanwhile: after a restart, a steady load was
+        # not counted until its power or the price next changed.
+        try:
+            rate = self._calculate_cost_rate()
+        except (ValueError, ArithmeticError) as e:
+            _LOGGER.error("Error calculating the starting cost rate: %s", e)
+            rate = None
+        if rate is not None:
+            self._state = rate
         self.async_on_remove(
             async_track_state_change_event(
                 self.hass,
