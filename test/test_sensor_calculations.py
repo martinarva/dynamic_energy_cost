@@ -2011,3 +2011,56 @@ def test_power_sensors_name_their_source_sensors(hass):
     }
     assert realtime.extra_state_attributes == expected
     assert interval.extra_state_attributes == expected
+
+
+# ---------------------------------------------------------------------------
+# realtime rate at startup
+# ---------------------------------------------------------------------------
+
+
+def _realtime_sensor(hass):
+    sensor = RealTimeCostSensor(
+        hass, _entry(), "sensor.electricity_price", "sensor.heat_pump_power"
+    )
+    sensor.async_on_remove = Mock()
+    return sensor
+
+
+async def test_realtime_sensor_starts_from_current_price_and_power(hass):
+    """The rate is known as soon as the sensor is added, not after a change."""
+    hass.states.async_set(
+        "sensor.electricity_price", "0.2", {"unit_of_measurement": "EUR/kWh"}
+    )
+    hass.states.async_set(
+        "sensor.heat_pump_power", "1500", {"unit_of_measurement": "W"}
+    )
+    sensor = _realtime_sensor(hass)
+
+    await sensor.async_added_to_hass()
+
+    assert sensor.state == pytest.approx(0.3)  # 1.5 kW at 0.20 EUR/kWh
+
+
+async def test_realtime_sensor_starts_at_zero_without_sources(hass):
+    """Sources that are not there yet leave the rate at 0 until they report."""
+    sensor = _realtime_sensor(hass)
+
+    await sensor.async_added_to_hass()
+
+    assert sensor.state == 0
+
+
+@pytest.mark.parametrize("bad_value", ["nan", "inf", "unknown", "unavailable"])
+async def test_realtime_sensor_start_survives_unusable_source(hass, bad_value):
+    """An unusable source value at startup must not stop the sensor being added."""
+    hass.states.async_set(
+        "sensor.electricity_price", "0.2", {"unit_of_measurement": "EUR/kWh"}
+    )
+    hass.states.async_set(
+        "sensor.heat_pump_power", bad_value, {"unit_of_measurement": "W"}
+    )
+    sensor = _realtime_sensor(hass)
+
+    await sensor.async_added_to_hass()
+
+    assert sensor.state == 0

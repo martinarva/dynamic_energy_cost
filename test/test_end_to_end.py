@@ -399,6 +399,54 @@ async def test_power_cost_is_restored_after_restart(
     assert _value(hass, daily) == pytest.approx(4.74)
 
 
+async def test_steady_load_is_charged_from_startup(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """A load that doesn't change is charged from the moment the entry starts.
+
+    Before, the realtime rate stayed 0 until the power or price changed, so
+    after a restart a steady load cost nothing until then.
+    """
+    freezer.move_to(_local(2026, 11, 21, 10, 0, 0))
+    await _set(hass, PRICE, 0.20, "EUR/kWh")
+    await _set(hass, POWER, 1000, "W")  # already reporting, and stays put
+    entry = _entry("power_sensor", POWER, [REAL_TIME, DAILY])
+    await _setup(hass, entry)
+    realtime = _entity_id(hass, entry, REAL_TIME)
+    daily = _entity_id(hass, entry, DAILY)
+
+    assert _value(hass, realtime) == pytest.approx(0.2)
+
+    await _advance(hass, freezer, 3600)  # an hour without any change
+    await _set(hass, PRICE, 0.30, "EUR/kWh")  # the next change books that hour
+    assert _value(hass, daily) == pytest.approx(0.2)
+
+
+async def test_steady_load_is_charged_across_a_reload(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """Changing the options reloads the entry without losing a steady load's cost."""
+    freezer.move_to(_local(2026, 11, 21, 10, 0, 0))
+    await _set(hass, PRICE, 0.20, "EUR/kWh")
+    await _set(hass, POWER, 1000, "W")
+    entry = _entry("power_sensor", POWER, [REAL_TIME, DAILY, MONTHLY])
+    await _setup(hass, entry)
+    daily = _entity_id(hass, entry, DAILY)
+
+    await _advance(hass, freezer, 1800)  # half an hour, nothing booked yet
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.data, SELECTED_SENSORS: [REAL_TIME, DAILY]}
+    )
+    await _settle(hass)
+    # The half hour before the reload is kept...
+    assert _value(hass, daily) == pytest.approx(0.1)
+
+    await _advance(hass, freezer, 3600)
+    await _set(hass, PRICE, 0.30, "EUR/kWh")
+    # ...and the hour after it is charged at the restarted rate.
+    assert _value(hass, daily) == pytest.approx(0.3)
+
+
 async def test_power_cost_saved_at_shutdown_includes_unpublished_cost(
     hass: HomeAssistant, freezer: FrozenDateTimeFactory
 ) -> None:
