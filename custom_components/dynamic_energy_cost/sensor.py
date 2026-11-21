@@ -306,6 +306,8 @@ def get_currency(hass: HomeAssistant):
 class RealTimeCostSensor(SensorEntity):
     """Sensor that calculates energy cost in real-time based on power usage and electricity price."""
 
+    _attr_should_poll = False
+
     def __init__(
         self,
         hass: HomeAssistant,
@@ -386,7 +388,7 @@ class RealTimeCostSensor(SensorEntity):
             return
 
         if new_state.state in ["unknown", "unavailable"]:
-            _LOGGER.warning(
+            _LOGGER.debug(
                 "State of %s is '%s', skipping update", entity_id, new_state.state
             )
             return
@@ -824,6 +826,27 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
             )
         except (InvalidOperation, TypeError) as e:
             _LOGGER.error("Error updating cumulative cost: %s", str(e))
+
+    @callback
+    def async_reset(self, *args):
+        """Reset the total, first booking the cost accrued since the last update.
+
+        The cost is only integrated when the real-time rate changes, so the
+        time between the last change and the reset would otherwise be lost.
+        The rate is kept so integration continues after the reset.
+        """
+        rate = self._last_cost_rate
+        if rate is not None and self._last_update is not None:
+            elapsed = (now() - self._last_update).total_seconds()
+            if elapsed > 0:
+                self._state = (
+                    self._state + rate * Decimal(elapsed) / Decimal(3600)
+                ).quantize(ACCUMULATED_COST_PRECISION)
+                # Publish the closing value of the ended period.
+                self.async_write_ha_state()
+
+        super().async_reset(*args)
+        self._last_cost_rate = rate
 
     @property
     def unique_id(self):
