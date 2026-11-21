@@ -17,7 +17,7 @@ def test_manifest_version_is_plain_semver() -> None:
     """Manifest version stays in source control without a v prefix."""
     manifest = json.loads(MANIFEST_PATH.read_text())
 
-    assert manifest["version"] == "1.2.4"
+    assert manifest["version"] == "1.3.0"
     assert not manifest["version"].startswith("v")
 
 
@@ -29,7 +29,7 @@ def test_normalize_tag_strips_optional_v_prefix() -> None:
 
 def test_validate_release_version_accepts_matching_tag() -> None:
     """Release validation accepts matching versions."""
-    assert validate_release_version(MANIFEST_PATH, "v1.2.4") == "1.2.4"
+    assert validate_release_version(MANIFEST_PATH, "v1.3.0") == "1.3.0"
 
 
 def test_release_workflow_validates_version_without_mutating_manifest() -> None:
