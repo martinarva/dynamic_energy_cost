@@ -1845,3 +1845,122 @@ def test_power_sensor_reset_books_pending_cost_and_keeps_rate(hass):
         )
     )
     assert sensor.state == pytest.approx(Decimal("0.3"), abs=Decimal("0.000001"))
+
+
+# ---------------------------------------------------------------------------
+# rate-limited publishing (#242)
+# ---------------------------------------------------------------------------
+
+
+def _rate_event(sensor, rate: str):
+    return _event(
+        entity_id=sensor._real_time_cost_sensor.entity_id, new_state=_state(rate)
+    )
+
+
+async def test_power_sensor_keeps_accumulating_while_writes_are_held_back(hass):
+    """Updates inside PUBLISH_INTERVAL are counted, then published once."""
+    from datetime import timedelta
+
+    from pytest_homeassistant_custom_component.common import async_fire_time_changed
+
+    from custom_components.dynamic_energy_cost.entity import PUBLISH_INTERVAL
+
+    sensor = _power_cost_sensor(hass)
+    written = []
+    sensor.async_write_ha_state = Mock(
+        side_effect=lambda: written.append(sensor._state)
+    )
+    sensor._last_cost_rate = Decimal("0.6000")  # EUR/h
+
+    with _frozen_clock() as frozen:
+        for _ in range(3):
+            sensor._last_update = frozen - timedelta(minutes=10)
+            sensor._handle_real_time_cost_update(_rate_event(sensor, "0.6000"))
+
+    # Every 10-minute slice is counted, but only the first one was written.
+    assert sensor.state == pytest.approx(Decimal("0.3"), abs=Decimal("0.000001"))
+    assert written == [pytest.approx(Decimal("0.1"), abs=Decimal("0.000001"))]
+    assert sensor._publish_unsub is not None
+
+    # The held-back write publishes the latest value at the end of the interval.
+    async_fire_time_changed(hass, dt_util.utcnow() + PUBLISH_INTERVAL)
+    await hass.async_block_till_done()
+
+    assert len(written) == 2
+    assert written[1] == pytest.approx(Decimal("0.3"), abs=Decimal("0.000001"))
+    assert sensor._publish_unsub is None
+
+
+async def test_reset_publishes_held_back_cost_before_zeroing(hass):
+    """A reset must not drop cost that has not been published yet."""
+    from datetime import timedelta
+
+    sensor = _power_cost_sensor(hass)
+    written = []
+    sensor.async_write_ha_state = Mock(
+        side_effect=lambda: written.append(sensor._state)
+    )
+    sensor._last_cost_rate = Decimal("0.6000")
+
+    with _frozen_clock() as frozen:
+        for _ in range(2):
+            sensor._last_update = frozen - timedelta(minutes=10)
+            sensor._handle_real_time_cost_update(_rate_event(sensor, "0.6000"))
+        assert len(written) == 1  # the second slice is held back
+
+        sensor.async_reset()
+
+    # Closing value of the period (both slices), then the reset to zero.
+    assert written[1:] == [
+        pytest.approx(Decimal("0.2"), abs=Decimal("0.000001")),
+        Decimal(0),
+    ]
+    assert sensor._publish_unsub is None
+
+
+async def test_energy_sensor_counts_every_update_but_writes_once(hass):
+    """A fast energy sensor no longer causes a state write per update."""
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.heat_pump_energy",
+        "sensor.electricity_price",
+        HOURLY,
+    )
+    sensor.async_write_ha_state = Mock()
+    sensor._last_energy_reading = 100.0
+    sensor._cumulative_cost = 0.0
+
+    hass.states.async_set("sensor.electricity_price", "0.2")
+    for reading in ("101", "102", "103"):
+        await sensor._async_update_energy_event(
+            _event(
+                entity_id="sensor.heat_pump_energy",
+                new_state=_state_with_unit(reading, "kWh"),
+            )
+        )
+
+    assert sensor._cumulative_cost == pytest.approx(0.6)
+    assert sensor._cumulative_energy == pytest.approx(3.0)
+    sensor.async_write_ha_state.assert_called_once()
+
+    # Removing the entity cancels the held-back write.
+    await sensor.async_will_remove_from_hass()
+    assert sensor._publish_unsub is None
+
+
+def test_energy_sensor_does_not_record_volatile_attributes():
+    """Attributes that change on every update stay out of the recorder."""
+    volatile = {
+        "cumulative_energy",
+        "last_energy_reading",
+        "cumulative_cost",
+        "average_energy_cost",
+    }
+    # The union Home Assistant hands to the recorder.
+    unrecorded = EnergyCostSensor._Entity__combined_unrecorded_attributes
+
+    assert volatile <= unrecorded
+    # Statistics need last_reset, so it must stay recorded.
+    assert "last_reset" not in unrecorded

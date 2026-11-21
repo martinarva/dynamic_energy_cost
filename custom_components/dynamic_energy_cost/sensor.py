@@ -444,6 +444,18 @@ class RealTimeCostSensor(SensorEntity):
 class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
     """Base sensor for handling energy cost data."""
 
+    # These attributes change on every update. They stay on the entity (and
+    # are restored after a restart), but recording them would store a new
+    # attributes row with every state write (#242).
+    _unrecorded_attributes = frozenset(
+        {
+            "cumulative_energy",
+            "last_energy_reading",
+            "cumulative_cost",
+            "average_energy_cost",
+        }
+    )
+
     def __init__(
         self,
         hass: HomeAssistant,
@@ -610,7 +622,7 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
                     f"Change in Energy price: cumulative cost {self._cumulative_cost} EUR and cumulative energy usage to {self._cumulative_energy} kWh"
                 )
                 self._last_energy_reading = current_energy
-            self.async_write_ha_state()
+            self._async_publish_state()
 
         except Exception as e:
             _LOGGER.error("Failed to update energy costs due to an error: %s", str(e))
@@ -665,7 +677,7 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
                 f"Energy cost incremented by {cost_increment} on top of {self._cumulative_cost}, total cost now {self._state} EUR"
             )
 
-            self.async_write_ha_state()
+            self._async_publish_state()
 
         except Exception as e:
             _LOGGER.error("Failed to update energy costs due to an error: %s", str(e))
@@ -817,7 +829,7 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
             )
             self._last_cost_rate = current_cost
             self._last_update = now()
-            self.async_write_ha_state()
+            self._async_publish_state()
             _LOGGER.debug(
                 "Updated state to: %s using previous cost: %s over %s hours",
                 self._state,
@@ -842,9 +854,8 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
                 self._state = (
                     self._state + rate * Decimal(elapsed) / Decimal(3600)
                 ).quantize(ACCUMULATED_COST_PRECISION)
-                # Publish the closing value of the ended period.
-                self.async_write_ha_state()
 
+        # The base reset publishes this closing value before zeroing.
         super().async_reset(*args)
         self._last_cost_rate = rate
 

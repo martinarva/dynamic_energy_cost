@@ -1,18 +1,24 @@
 """Class representing a Dynamic Energy Costs entity."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 import logging
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
-from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
-from homeassistant.helpers.event import async_track_point_in_time
+from homeassistant.core import CALLBACK_TYPE, HassJob, HomeAssistant, callback
+from homeassistant.helpers.event import async_call_later, async_track_point_in_time
 from homeassistant.util import dt as dt_util
 from homeassistant.util.dt import now
 
 from .const import QUARTERLY, HOURLY, DAILY, MANUAL, MONTHLY, WEEKLY, YEARLY
 
 _LOGGER = logging.getLogger(__name__)
+
+# Interval cost sensors publish their state at most this often. Cost is still
+# accumulated on every source update; only the state writes are rate-limited,
+# so a fast source sensor no longer adds a recorder row per update for every
+# interval sensor (#242). 30 s is Home Assistant's default polling interval.
+PUBLISH_INTERVAL = timedelta(seconds=30)
 
 
 class BaseUtilitySensor(SensorEntity):
@@ -31,6 +37,8 @@ class BaseUtilitySensor(SensorEntity):
         self._last_update = now()
         self._last_reset = now()
         self._name = None
+        self._last_publish: datetime | None = None
+        self._publish_unsub: CALLBACK_TYPE | None = None
 
     def calculate_next_reset_time(self):
         """Determine the exact datetime for the next reset based on the interval."""
@@ -114,8 +122,54 @@ class BaseUtilitySensor(SensorEntity):
         self.schedule_next_reset()
 
     @callback
+    def _async_publish_state(self, *, force: bool = False) -> None:
+        """Write the state, at most once per PUBLISH_INTERVAL unless forced.
+
+        An update that arrives inside the interval is published at its end,
+        so the latest value always reaches Home Assistant within
+        PUBLISH_INTERVAL.
+        """
+        if not force and self._last_publish is not None:
+            if self._publish_unsub is not None:
+                return  # The pending write will publish the latest value.
+            elapsed = now() - self._last_publish
+            if timedelta(0) <= elapsed < PUBLISH_INTERVAL:
+                self._publish_unsub = async_call_later(
+                    self.hass,
+                    PUBLISH_INTERVAL - elapsed,
+                    HassJob(
+                        self._async_publish_pending,
+                        "dynamic_energy_cost publish",
+                        cancel_on_shutdown=True,
+                    ),
+                )
+                return
+
+        self._cancel_pending_publish()
+        self._last_publish = now()
+        self.async_write_ha_state()
+
+    @callback
+    def _async_publish_pending(self, _now: datetime) -> None:
+        """Publish the state held back by the rate limit."""
+        self._publish_unsub = None
+        self._async_publish_state(force=True)
+
+    @callback
+    def _cancel_pending_publish(self) -> None:
+        """Cancel a pending rate-limited write."""
+        if self._publish_unsub is not None:
+            self._publish_unsub()
+            self._publish_unsub = None
+
+    @callback
     def async_reset(self, *args):
         """Reset the energy cost and cumulative energy kWh."""
+        # Publish the closing value of the ended period first. Publishing is
+        # rate-limited, so the latest cost may not have been written yet and
+        # would otherwise be lost from both the old and the new period.
+        self._async_publish_state(force=True)
+
         self._state = Decimal(0) if type(self._state) is Decimal else 0
 
         if hasattr(self, "_cumulative_energy"):
@@ -129,7 +183,7 @@ class BaseUtilitySensor(SensorEntity):
             self._last_cost_rate = None  # pylint: disable=attribute-defined-outside-init
         self._last_update = now()
         self._last_reset = now()
-        self.async_write_ha_state()
+        self._async_publish_state(force=True)
         _LOGGER.debug("Meter reset for %s", self._name)
 
     @callback
@@ -145,14 +199,15 @@ class BaseUtilitySensor(SensorEntity):
             else self._cumulative_cost
         )
         self._last_update = now()
-        self.async_write_ha_state()
+        self._async_publish_state(force=True)
 
     async def async_will_remove_from_hass(self):
-        """Remove the reset event from the schedule."""
+        """Remove the reset event and any pending write from the schedule."""
         if self.event_unsub:
             event_unsub = self.event_unsub
             self.event_unsub = None
             event_unsub()
+        self._cancel_pending_publish()
 
         await super().async_will_remove_from_hass()
 
