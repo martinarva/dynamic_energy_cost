@@ -106,7 +106,9 @@ When setting up the integration, you will go through two steps:
 
 - Use a price sensor that already represents the final price you want to track.
 - If you need tariffs, standing charges, VAT, or other custom logic, build that into a template sensor first and feed the result into this integration.
-- Energy-based sensors include attributes for total energy used (kWh) and average energy price, useful for optimizing usage during cheaper hours.
+- Energy-based sensors include attributes for total energy used (kWh) and average energy price, useful for optimizing usage during cheaper hours. They change with every update, so they are shown on the sensor but not kept in the history database.
+- Every cost sensor has `source` and `price_source` attributes with the entity IDs of the consumption and price sensors it is calculated from, so templates and dashboard cards can match cost sensors to their devices.
+- Cost sensors show a new value at most every 30 seconds, which keeps the database small. The cost of every update is still counted. The Real Time Cost sensor updates right away.
 - Interval cost sensors expose `last_reset` for compatibility with HA statistics consumers.
 
 ## Services
