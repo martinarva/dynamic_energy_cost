@@ -24,6 +24,8 @@ except ImportError:
     async_entity_id_to_device = None
 
 from .const import (
+    ATTR_PRICE_SOURCE,
+    ATTR_SOURCE,
     QUARTERLY,
     HOURLY,
     DAILY,
@@ -373,6 +375,14 @@ class RealTimeCostSensor(SensorEntity):
         """Return the unit of measurement."""
         return self._unit_of_measurement
 
+    @property
+    def extra_state_attributes(self):
+        """Name the sensors this cost is calculated from (#247)."""
+        return {
+            ATTR_SOURCE: self._power_sensor_id,
+            ATTR_PRICE_SOURCE: self._electricity_price_sensor_id,
+        }
+
     @callback
     def async_reset(self):
         """Handle reset, dummy to accept reset on device level."""
@@ -469,6 +479,8 @@ class EnergyCostSensor(RestoreEntity, BaseUtilitySensor):
         self._config_entry = config_entry
         self._energy_sensor_id = energy_sensor_id
         self._price_sensor_id = price_sensor_id
+        self._source_entity_id = energy_sensor_id
+        self._price_entity_id = price_sensor_id
         self._last_energy_reading = None
         self._cumulative_energy = 0.0
         self._cumulative_cost = None  # updated on price change events and used for more precise cost calculations
@@ -722,6 +734,8 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
         super().__init__(hass, interval)
         self._real_time_cost_sensor = real_time_cost_sensor
         self._last_cost_rate: Decimal | None = None
+        self._source_entity_id = real_time_cost_sensor._power_sensor_id
+        self._price_entity_id = real_time_cost_sensor._electricity_price_sensor_id
         # Power cost follows the same source device as realtime cost
         self.device_entry = real_time_cost_sensor.device_entry
         self._config_entry = real_time_cost_sensor._config_entry

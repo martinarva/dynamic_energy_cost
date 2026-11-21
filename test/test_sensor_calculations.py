@@ -1964,3 +1964,50 @@ def test_energy_sensor_does_not_record_volatile_attributes():
     assert volatile <= unrecorded
     # Statistics need last_reset, so it must stay recorded.
     assert "last_reset" not in unrecorded
+
+
+# ---------------------------------------------------------------------------
+# source attributes (#247)
+# ---------------------------------------------------------------------------
+
+
+def test_energy_sensor_names_its_source_sensors(hass):
+    """Energy cost sensors say which sensors they are calculated from."""
+    sensor = EnergyCostSensor(
+        hass,
+        _entry(),
+        "sensor.heat_pump_energy",
+        "sensor.electricity_price",
+        DAILY,
+    )
+
+    attrs = sensor.extra_state_attributes
+
+    assert attrs["source"] == "sensor.heat_pump_energy"
+    assert attrs["price_source"] == "sensor.electricity_price"
+    # The existing attributes are unchanged.
+    for key in (
+        "cumulative_energy",
+        "last_energy_reading",
+        "cumulative_cost",
+        "average_energy_cost",
+    ):
+        assert key in attrs
+
+
+def test_power_sensors_name_their_source_sensors(hass):
+    """Realtime and interval sensors of a power entry share the same sources."""
+    realtime = RealTimeCostSensor(
+        hass,
+        _entry(),
+        "sensor.electricity_price",
+        "sensor.heat_pump_power",
+    )
+    interval = PowerCostSensor(hass, realtime, DAILY)
+
+    expected = {
+        "source": "sensor.heat_pump_power",
+        "price_source": "sensor.electricity_price",
+    }
+    assert realtime.extra_state_attributes == expected
+    assert interval.extra_state_attributes == expected
