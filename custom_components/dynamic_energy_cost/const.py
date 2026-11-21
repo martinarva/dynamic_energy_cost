@@ -18,6 +18,10 @@ MANUAL = "manual"
 SELECTED_SENSORS = "selected_sensors"
 REAL_TIME = "real_time"
 
+# Entity IDs of the sensors a cost sensor is calculated from (#247)
+ATTR_SOURCE = "source"
+ATTR_PRICE_SOURCE = "price_source"
+
 SENSOR_LABELS = {
     REAL_TIME: "Real Time Cost (current cost per hour)",
     QUARTERLY: "15-Minute Cost",

@@ -10,7 +10,17 @@ from homeassistant.helpers.event import async_call_later, async_track_point_in_t
 from homeassistant.util import dt as dt_util
 from homeassistant.util.dt import now
 
-from .const import QUARTERLY, HOURLY, DAILY, MANUAL, MONTHLY, WEEKLY, YEARLY
+from .const import (
+    ATTR_PRICE_SOURCE,
+    ATTR_SOURCE,
+    QUARTERLY,
+    HOURLY,
+    DAILY,
+    MANUAL,
+    MONTHLY,
+    WEEKLY,
+    YEARLY,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,6 +49,10 @@ class BaseUtilitySensor(SensorEntity):
         self._name = None
         self._last_publish: datetime | None = None
         self._publish_unsub: CALLBACK_TYPE | None = None
+        # Set by subclasses: the consumption and price sensors this cost is
+        # calculated from.
+        self._source_entity_id: str | None = None
+        self._price_entity_id: str | None = None
 
     def calculate_next_reset_time(self):
         """Determine the exact datetime for the next reset based on the interval."""
@@ -215,6 +229,18 @@ class BaseUtilitySensor(SensorEntity):
     def state(self):
         """Return the current cumulative cost."""
         return self._state
+
+    @property
+    def extra_state_attributes(self):
+        """Name the sensors this cost is calculated from (#247).
+
+        Lets templates and cards match cost sensors to their source
+        devices without a hand-kept mapping.
+        """
+        return {
+            ATTR_SOURCE: self._source_entity_id,
+            ATTR_PRICE_SOURCE: self._price_entity_id,
+        }
 
     @property
     def device_class(self):
