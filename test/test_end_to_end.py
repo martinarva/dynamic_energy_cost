@@ -16,7 +16,11 @@ import pytest
 
 from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.core import Event, HassJob, HomeAssistant, State, callback
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import (
+    device_registry as dr,
+    entity_registry as er,
+    restore_state,
+)
 from homeassistant.helpers.service import async_get_all_descriptions
 from homeassistant.util import dt as dt_util
 from homeassistant.util.async_ import get_scheduled_timer_handles
@@ -25,6 +29,7 @@ from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
     async_fire_time_changed,
     mock_restore_cache,
+    mock_restore_cache_with_extra_data,
 )
 
 from custom_components.dynamic_energy_cost.const import (
@@ -392,6 +397,81 @@ async def test_power_cost_is_restored_after_restart(
     await _advance(hass, freezer, 3600)
     await _set(hass, POWER, 1000, "W")
     assert _value(hass, daily) == pytest.approx(4.74)
+
+
+async def test_power_cost_saved_at_shutdown_includes_unpublished_cost(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """What Home Assistant saves for a restart includes cost not yet published.
+
+    The published state can be up to 30 s behind, and the cost since the
+    last rate change is only added on the next change. Both must be saved,
+    or every restart would drop them.
+    """
+    freezer.move_to(_local(2026, 11, 21, 10, 0, 0))
+    await _set(hass, PRICE, 0.20, "EUR/kWh")
+    await _set(hass, POWER, 0, "W")
+    entry = _entry("power_sensor", POWER, [REAL_TIME, DAILY])
+    await _setup(hass, entry)
+    daily = _entity_id(hass, entry, DAILY)
+
+    await _set(hass, POWER, 1800, "W")  # 0.36 EUR/h
+    await _advance(hass, freezer, 600)
+    await _set(hass, POWER, 3600, "W")  # 10 min at 0.36: 0.06, published
+    await _advance(hass, freezer, 10)
+    await _set(hass, POWER, 1800, "W")  # 10 s at 0.72: +0.002, held back
+    await _advance(hass, freezer, 15)  # 15 s at 0.36: +0.0015, not booked yet
+
+    assert _value(hass, daily) == pytest.approx(0.06)
+    saved = {
+        stored.state.entity_id: stored
+        for stored in restore_state.async_get(hass).async_get_stored_states()
+    }[daily]
+    assert float(saved.state.state) == pytest.approx(0.06)
+    assert float(saved.extra_data.as_dict()["accrued_cost"]) == pytest.approx(0.0635)
+
+
+async def test_power_cost_restored_from_saved_total(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory
+) -> None:
+    """After a restart the full saved total comes back, and counting goes on."""
+    freezer.move_to(_local(2026, 11, 21, 10, 0, 0))
+    entry = _entry("power_sensor", POWER, [REAL_TIME, DAILY])
+    entry.add_to_hass(hass)
+    daily = (
+        er.async_get(hass)
+        .async_get_or_create(
+            "sensor",
+            DOMAIN,
+            f"{entry.entry_id}_daily_cost",
+            suggested_object_id="heat_pump_daily_energy_cost",
+            config_entry=entry,
+        )
+        .entity_id
+    )
+    mock_restore_cache_with_extra_data(
+        hass,
+        [
+            (
+                State(
+                    daily,
+                    "0.06",
+                    {"state_class": "total", "last_reset": "2026-11-21T00:00:00-08:00"},
+                ),
+                {"accrued_cost": "0.0635"},
+            )
+        ],
+    )
+    await _set(hass, PRICE, 0.20, "EUR/kWh")
+    await _set(hass, POWER, 1800, "W")
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert _value(hass, daily) == pytest.approx(0.0635)
+
+    await _set(hass, POWER, 3600, "W")  # realtime rate 0.72 EUR/h
+    await _advance(hass, freezer, 600)
+    await _set(hass, POWER, 1800, "W")  # 10 min at 0.72: +0.12
+    assert _value(hass, daily) == pytest.approx(0.1835)
 
 
 # ---------------------------------------------------------------------------

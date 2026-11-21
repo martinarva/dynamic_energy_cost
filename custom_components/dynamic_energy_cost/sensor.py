@@ -15,7 +15,11 @@ from homeassistant.helpers import (
 )
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
-from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.restore_state import (
+    ExtraStoredData,
+    RestoredExtraData,
+    RestoreEntity,
+)
 from homeassistant.util.dt import now
 
 try:
@@ -56,6 +60,8 @@ REALTIME_COST_PRECISION = Decimal("0.0001")
 # small loads, whose per-update increment is well below 0.0001, still add up
 # instead of rounding away to nothing (#237).
 ACCUMULATED_COST_PRECISION = Decimal("0.00000001")
+# Key of the full total saved with a power-based cost sensor's state.
+ACCRUED_COST = "accrued_cost"
 
 
 def _resolve_source_device(hass: HomeAssistant, source_entity_id: str):
@@ -762,6 +768,17 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
                     "Invalid state value for restoration: %s", last_state.state
                 )
 
+        # Prefer the total saved alongside the state: the published state can
+        # be behind the counted cost (see extra_restore_state_data). Data saved
+        # by older versions has no such total and keeps the state above.
+        if (last_extra := await self.async_get_last_extra_data()) is not None:
+            accrued = last_extra.as_dict().get(ACCRUED_COST)
+            if accrued is not None:
+                try:
+                    self._state = Decimal(accrued)
+                except InvalidOperation:
+                    _LOGGER.error("Invalid saved cost for restoration: %s", accrued)
+
         current_rate_state = self.hass.states.get(self._real_time_cost_sensor.entity_id)
         if current_rate_state and current_rate_state.state not in (
             "unknown",
@@ -862,16 +879,37 @@ class PowerCostSensor(BaseUtilitySensor, RestoreEntity):
         The rate is kept so integration continues after the reset.
         """
         rate = self._last_cost_rate
-        if rate is not None and self._last_update is not None:
-            elapsed = (now() - self._last_update).total_seconds()
-            if elapsed > 0:
-                self._state = (
-                    self._state + rate * Decimal(elapsed) / Decimal(3600)
-                ).quantize(ACCUMULATED_COST_PRECISION)
+        self._state = self._accrued_cost()
 
         # The base reset publishes this closing value before zeroing.
         super().async_reset(*args)
         self._last_cost_rate = rate
+
+    def _accrued_cost(self) -> Decimal:
+        """Return the total including the cost at the current rate since then.
+
+        The cost is only integrated when the real-time rate changes, so the
+        time since the last change is not in the total yet.
+        """
+        total = self._state
+        if self._last_cost_rate is not None and self._last_update is not None:
+            elapsed = (now() - self._last_update).total_seconds()
+            if elapsed > 0:
+                total = (
+                    total + self._last_cost_rate * Decimal(elapsed) / Decimal(3600)
+                ).quantize(ACCUMULATED_COST_PRECISION)
+        return total
+
+    @property
+    def extra_restore_state_data(self) -> ExtraStoredData:
+        """Save the cost counted so far, not just the last published value.
+
+        Home Assistant restores the published state after a restart or reload,
+        and that can be up to PUBLISH_INTERVAL behind (#242), with the cost
+        since the last rate change not added yet. Saving the full total keeps
+        both. It is read when the state is saved, so it is always current.
+        """
+        return RestoredExtraData({ACCRUED_COST: str(self._accrued_cost())})
 
     @property
     def unique_id(self):
