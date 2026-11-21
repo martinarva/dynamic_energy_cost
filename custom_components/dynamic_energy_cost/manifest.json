@@ -1,6 +1,7 @@
 {
   "domain": "dynamic_energy_cost",
   "name": "Dynamic Energy Cost",
+  "categories": ["helpers.calculate_value", "energy.meters_monitoring"],
   "codeowners": ["@martinarva"],
   "config_flow": true,
   "dependencies": ["sensor","input_number","number"],
