@@ -4,10 +4,10 @@
     "step": {
       "user": {
         "title": "Configureer uw Dynamic Energy Cost Integration",
-        "description": "Selecteer een vermogenssensor (W) of een energiesensor (kWh), samen met de prijssensor (EUR/kWh).",
+        "description": "Selecteer een vermogenssensor (W) of een energiesensor (kWh), samen met de prijssensor (valuta/kWh).",
         "data": {
           "integration_description": "Titel voor de integratie",
-          "electricity_price_sensor": "Elektriciteitsprijssensor Entiteits-ID (eur/kWh)",
+          "electricity_price_sensor": "Elektriciteitsprijssensor Entiteits-ID (valuta/kWh)",
           "power_sensor": "Energieverbruiksensor-entiteits-ID (W) - Optioneel als er een energiesensor is voorzien",
           "energy_sensor": "Energieverbruiksensor-entiteits-ID (kWh) - Optioneel als er een vermogenssensor is voorzien"
         }
@@ -34,10 +34,10 @@
     "step": {
       "user": {
         "title": "Configureer uw Dynamic Energy Cost Integration",
-        "description": "Selecteer een vermogenssensor (W) of een energiesensor (kWh), samen met de prijssensor (EUR/kWh).",
+        "description": "Selecteer een vermogenssensor (W) of een energiesensor (kWh), samen met de prijssensor (valuta/kWh).",
         "data": {
           "integration_description": "Titel voor de integratie",
-          "electricity_price_sensor": "Elektriciteitsprijssensor Entiteits-ID (eur/kWh)",
+          "electricity_price_sensor": "Elektriciteitsprijssensor Entiteits-ID (valuta/kWh)",
           "power_sensor": "Energieverbruiksensor-entiteits-ID (W) - Optioneel als er een energiesensor is voorzien",
           "energy_sensor": "Energieverbruiksensor-entiteits-ID (kWh) - Optioneel als er een vermogenssensor is voorzien"
         }
