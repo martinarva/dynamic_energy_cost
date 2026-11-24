@@ -4,10 +4,10 @@
     "step": {
       "user": {
         "title": "Integration für dynamische Energiekosten konfigurieren",
-        "description": "Entweder einen Sensor für Leistung (W) oder den Energieverbrauch (kWh) sowie für den Energiepreis (EUR/kWh) auswählen.",
+        "description": "Entweder einen Sensor für Leistung (W) oder den Energieverbrauch (kWh) sowie für den Energiepreis (Währung/kWh) auswählen.",
         "data": {
           "integration_description": "Zusatz, welcher zur Bezeichnung der Integration hinzugefügt werden soll",
-          "electricity_price_sensor": "Entitäts-ID vom Sensor für den Strompreis (EUR/kWh)",
+          "electricity_price_sensor": "Entitäts-ID vom Sensor für den Strompreis (Währung/kWh)",
           "power_sensor": "Entitäts-ID vom Sensor für die Leistung (W) - Optional wenn Energiesensor verwendet werden soll",
           "energy_sensor": "Entitäts-ID vom Sensor für die Energie (kWh) - Optional wenn Leistungssensor verwendet werden soll"
         }
@@ -34,10 +34,10 @@
     "step": {
       "user": {
         "title": "Integration für dynamische Energiekosten konfigurieren",
-        "description": "Entweder einen Sensor für Leistung (W) oder den Energieverbrauch (kWh) sowie für den Energiepreis (EUR/kWh) auswählen.",
+        "description": "Entweder einen Sensor für Leistung (W) oder den Energieverbrauch (kWh) sowie für den Energiepreis (Währung/kWh) auswählen.",
         "data": {
           "integration_description": "Zusatz, welcher zur Bezeichnung der Integration hinzugefügt werden soll",
-          "electricity_price_sensor": "Entitäts-ID vom Sensor für den Strompreis (EUR/kWh)",
+          "electricity_price_sensor": "Entitäts-ID vom Sensor für den Strompreis (Währung/kWh)",
           "power_sensor": "Entitäts-ID vom Sensor für die Leistung (W) - Optional wenn Energiesensor verwendet werden soll",
           "energy_sensor": "Entitäts-ID vom Sensor für die Energie (kWh) - Optional wenn Leistungssensor verwendet werden soll"
         }

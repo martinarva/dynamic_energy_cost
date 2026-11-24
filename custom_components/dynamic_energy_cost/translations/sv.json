@@ -4,10 +4,10 @@
     "step": {
       "user": {
         "title": "Konfigurera din integration för Dynamisk Energikostnad",
-        "description": "Välj antingen en effektsensor (W) eller en energisensor (kWh), tillsammans med prissensorn (SEK/kWh).",
+        "description": "Välj antingen en effektsensor (W) eller en energisensor (kWh), tillsammans med prissensorn (valuta/kWh).",
         "data": {
           "integration_description": "Namn att lägga till i integrationstiteln",
-          "electricity_price_sensor": "Enhets-ID för elprissensor (SEK/kWh)",
+          "electricity_price_sensor": "Enhets-ID för elprissensor (valuta/kWh)",
           "power_sensor": "Enhets-ID för effektanvändningssensor (W) - Valfritt om energisensor tillhandahålls",
           "energy_sensor": "Enhets-ID för energianvändningssensor (kWh) - Valfritt om effektsensor tillhandahålls"
         }
@@ -34,10 +34,10 @@
     "step": {
       "user": {
         "title": "Konfigurera din integration för Dynamisk Energikostnad",
-        "description": "Välj antingen en effektsensor (W) eller en energisensor (kWh), tillsammans med prissensorn (SEK/kWh).",
+        "description": "Välj antingen en effektsensor (W) eller en energisensor (kWh), tillsammans med prissensorn (valuta/kWh).",
         "data": {
           "integration_description": "Namn att lägga till i integrationstiteln",
-          "electricity_price_sensor": "Enhets-ID för elprissensor (SEK/kWh)",
+          "electricity_price_sensor": "Enhets-ID för elprissensor (valuta/kWh)",
           "power_sensor": "Enhets-ID för effektanvändningssensor (W) - Valfritt om energisensor tillhandahålls",
           "energy_sensor": "Enhets-ID för energianvändningssensor (kWh) - Valfritt om effektsensor tillhandahålls"
         }

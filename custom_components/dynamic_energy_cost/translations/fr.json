@@ -4,10 +4,10 @@
     "step": {
       "user": {
         "title": "Configurez votre Dynamic Energy Cost Intégration",
-        "description": "Sélectionnez un capteur de puissance (W) ou un capteur d'énergie (kWh), ainsi que le capteur de prix (EUR/kWh).",
+        "description": "Sélectionnez un capteur de puissance (W) ou un capteur d'énergie (kWh), ainsi que le capteur de prix (devise/kWh).",
         "data": {
           "integration_description": "Nom à ajouter au titre de l'intégration",
-          "electricity_price_sensor": "Prix de l'électricité ID de l'entité du capteur (eur/kWh)",
+          "electricity_price_sensor": "Prix de l'électricité ID de l'entité du capteur (devise/kWh)",
           "power_sensor": "Power Usage Sensor Entity ID (W) - Facultatif si un capteur d'énergie est fourni",
           "energy_sensor": "Energy Usage Sensor Entity ID (kWh) - Facultatif si un capteur de puissance est fourni"
         }
@@ -34,10 +34,10 @@
     "step": {
       "user": {
         "title": "Configurez votre Dynamic Energy Cost Intégration",
-        "description": "Sélectionnez un capteur de puissance (W) ou un capteur d'énergie (kWh), ainsi que le capteur de prix (EUR/kWh).",
+        "description": "Sélectionnez un capteur de puissance (W) ou un capteur d'énergie (kWh), ainsi que le capteur de prix (devise/kWh).",
         "data": {
           "integration_description": "Nom à ajouter au titre de l'intégration",
-          "electricity_price_sensor": "Prix de l'électricité ID de l'entité du capteur (eur/kWh)",
+          "electricity_price_sensor": "Prix de l'électricité ID de l'entité du capteur (devise/kWh)",
           "power_sensor": "Power Usage Sensor Entity ID (W) - Facultatif si un capteur d'énergie est fourni",
           "energy_sensor": "Energy Usage Sensor Entity ID (kWh) - Facultatif si un capteur de puissance est fourni"
         }
